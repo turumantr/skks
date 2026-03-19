@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>SKKS v2.1 - Sınırsız Geçmiş</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root { 
+      --p: #2c3e50; --s: #27ae60; --d: #c0392b; --w: #f39c12; --bg: #f4f7f6; --def: #8e44ad; --cer: #3498db; 
+    }
+    body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    
+    /* LOGO STİLLERİ */
+    .logo-container { width: 100%; max-width: 1200px; padding: 15px 20px; background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 15px; border-left: 6px solid var(--cer); box-sizing: border-box; }
+    .logo-icon { font-size: 32px; color: var(--cer); }
+    .logo-text-group { display: flex; flex-direction: column; align-items: center; }
+    .logo-skks { font-size: 36px; font-weight: 900; color: var(--p); letter-spacing: 2px; line-height: 1; margin: 0; }
+    .logo-title { font-size: 14px; color: #7f8c8d; margin: 2px 0 0 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 500; }
+
+    .main-wrapper { width: 100%; max-width: 1200px; display: none; flex-direction: column; gap: 20px; }
+    .tabs { display: flex; gap: 5px; margin-bottom: -10px; z-index: 1; width: 100%; overflow-x: auto; padding-bottom: 5px; }
+    .tab-btn { padding: 12px 18px; background: #dcdde1; border: none; border-radius: 10px 10px 0 0; cursor: pointer; font-weight: bold; color: #7f8c8d; white-space: nowrap; font-size: 13px; transition: 0.3s; }
+    .tab-btn.active { background: white; color: var(--p); box-shadow: 0 -5px 15px rgba(0,0,0,0.05); }
+    
+    .box { background: white; padding: 20px; border-radius: 0 15px 15px 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; }
+    .content-page { display: none; width: 100%; animation: fadeIn 0.3s; flex-direction: column; gap: 15px; }
+    .content-page.active { display: flex; }
+    
+    input, select, textarea { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+    input { text-transform: uppercase; }
+    button { padding: 12px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    
+    .table-container { width: 100%; overflow-x: auto; background: white; border-radius: 8px; }
+    /* ÜRÜN GEÇMİŞİ İÇİN ÖZEL SCROLL AYARI */
+    .history-scroll { max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; }
+    
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; font-size: 13px; }
+    th { background: #f8f9fa; color: var(--p); font-weight: 600; position: sticky; top: 0; z-index: 5; }
+    
+    .search-results { position: absolute; background: white; z-index: 100; list-style: none; padding: 0; border: 1px solid #ccc; display: none; width: 100%; border-radius: 8px; max-height: 200px; overflow-y: auto; }
+    .search-results li { padding: 12px; cursor: pointer; border-bottom: 1px solid #eee; }
+    #authPage { width: 100%; max-width: 380px; margin-top: 10vh; }
+    @media (max-width: 600px) { .logo-container { flex-direction: column; text-align: center; } }
+  </style>
+</head>
+<body>
+
+<div id="authPage">
+  <div class="logo-container" style="border-radius: 15px 15px 0 0; margin-bottom: 0;">
+    <div class="logo-text-group">
+      <h1 class="logo-skks">SKKS</h1>
+      <p class="logo-title">Seramik Kalite Kontrol Sistemi</p>
+    </div>
+  </div>
+  <div class="box" style="border-radius: 0 0 15px 15px;">
+    <input type="text" id="sicilNo" placeholder="Sicil No" style="text-transform:none;">
+    <input type="password" id="sifre" placeholder="Şifre" style="text-transform:none;">
+    <button id="btnGiris" style="background: var(--p); width:100%">SİSTEME GİRİŞ</button>
+  </div>
+</div>
+
+<div id="mainApp" class="main-wrapper">
+  <div class="logo-container">
+    <span class="logo-icon">&#128203;</span>
+    <div class="logo-text-group">
+      <h1 class="logo-skks">SKKS</h1>
+      <p class="logo-title">Seramik Kalite Kontrol Sistemi</p>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showPage('kayitPage', this)">Üretim & Takip</button>
+    <button class="tab-btn" onclick="showPage('redPage', this)">Red Takibi</button>
+    <button class="tab-btn" onclick="showPage('defPage', this)">Deformasyon</button>
+    <button id="adminTab" class="tab-btn" style="display:none" onclick="showPage('personelPage', this)">Personel</button>
+    <button id="btnLogout" style="background:none; color:var(--d); margin-left:auto; border:none; cursor:pointer; font-weight:bold;">ÇIKIŞ</button>
+  </div>
+
+  <div id="kayitPage" class="content-page active">
+    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+      <div class="box" style="flex: 1; min-width: 320px;">
+        <h3>Yeni Kayıt Girişi</h3>
+        <div style="position:relative">
+          <input type="text" id="pSearch" placeholder="Ürün Adı Yazın..." autocomplete="off">
+          <ul id="productList" class="search-results"></ul>
+        </div>
+        <div style="display:flex; gap:10px">
+          <input type="number" id="rtVal" placeholder="Renk Tonu (RT)">
+          <input type="number" id="mrtVal" placeholder="MRT" readonly style="background: #f1f2f6; font-weight:bold; color:var(--s)">
+        </div>
+        <button id="btnKaydet" style="background:var(--s); width:100%; margin-top:10px">VERİYİ KAYDET</button>
+      </div>
+      
+      <div class="box" style="flex: 1; min-width: 320px;">
+        <h3 id="historyTitle">Ürün Geçmişi (Tümü)</h3>
+        <div class="table-container history-scroll">
+          <table>
+            <thead><tr><th>RT</th><th>MRT</th><th>Personel</th><th>Tarih/Saat</th></tr></thead>
+            <tbody id="historyTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="box">
+      <h3>Sistemdeki Son 20 Genel Kayıt</h3>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Ürün Adı</th><th>RT</th><th>MRT</th><th>Personel</th><th>Zaman</th></tr></thead>
+          <tbody id="last20Table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="redPage" class="content-page">
+    <div class="box">
+      <h3>🚨 Redli Palet Bildirimi</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+        <select id="redFabrika"><option value="">FABRİKA SEÇİN...</option><option value="FAB-1">FABRİKA-1</option><option value="FAB-2">FABRİKA-2</option></select>
+        <div style="position: relative;"><input type="text" id="redProdSearch" placeholder="Ürün Ara..."><ul id="redProdList" class="search-results"></ul></div>
+        <input type="text" id="redFisNo" placeholder="Fiş No">
+        <input type="text" id="redSorumlu" placeholder="Sorumlu">
+      </div>
+      <textarea id="redNeden" rows="2" placeholder="Red Nedeni..."></textarea>
+      <button id="btnRedKaydet" style="background:var(--d); width:100%">KAYDET</button>
+    </div>
+    <div class="box"><h4>Bekleyen Redler</h4><div class="table-container"><table><thead><tr><th>F</th><th>Ürün</th><th>Fiş</th><th>İşlem</th></tr></thead><tbody id="redBodyBekleyen"></tbody></table></div></div>
+  </div>
+
+  <div id="defPage" class="content-page">
+    <div class="box">
+      <h3>🟣 Deformasyon Girişi</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+        <select id="defFabrika"><option value="">FABRİKA SEÇ...</option><option value="FAB-1">FAB-1</option></select>
+        <div style="position: relative;"><input type="text" id="defProdSearch" placeholder="Ürün Ara..."><ul id="defProdList" class="search-results"></ul></div>
+        <input type="text" id="defFisNo" placeholder="Fiş No">
+        <input type="text" id="defTur" placeholder="Tür">
+      </div>
+      <button id="btnDefKaydet" style="background:var(--def); width:100%; margin-top:10px">KAYDET</button>
+    </div>
+    <div class="box"><h4>Bekleyen Deformasyonlar</h4><div class="table-container"><table><thead><tr><th>Ürün</th><th>Fiş</th><th>İşlem</th></tr></thead><tbody id="defBodyBekleyen"></tbody></table></div></div>
+  </div>
+
+  <div id="personelPage" class="content-page">
+    <div class="box">
+      <h3>Personel Yönetimi</h3>
+      <input type="number" id="newUserSicil" placeholder="Sicil No">
+      <input type="password" id="newUserPass" placeholder="Şifre">
+      <select id="newUserRole"><option value="operator">OPERATÖR</option><option value="admin">ADMİN</option></select>
+      <button id="btnCreateUser" style="background:var(--p); width:100%">EKLE</button>
+      <div class="table-container"><table><thead><tr><th>Sicil</th><th>Yetki</th><th>İşlem</th></tr></thead><tbody id="adminUserTable"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, doc, getDoc, onSnapshot, query, where, orderBy, limit, setDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB4ikTS6MwwIHbgjscyVTRSZatQM_PoL7Y",
+    authDomain: "skks-d6ad6.firebaseapp.com",
+    projectId: "skks-d6ad6",
+    storageBucket: "skks-d6ad6.firebasestorage.app",
+    messagingSenderId: "386101104279",
+    appId: "1:386101104279:web:873f676c785ff43a7d23d2"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  let allProducts = [];
+  let masterLogin = false;
+
+  function startApp(role) {
+    document.getElementById("authPage").style.display = "none";
+    document.getElementById("mainApp").style.display = "flex";
+    if (role === "admin") { document.getElementById("adminTab").style.display = "block"; loadAdminUserList(); }
+    onSnapshot(collection(db, "Ürünler"), (sn) => { allProducts = sn.docs.map(d => d.data().name.toUpperCase()); });
+    listenLast20(); listenRedData(); listenDefData();
+  }
+
+  onAuthStateChanged(auth, async (user) => { if (user && !masterLogin) { const s = await getDoc(doc(db, "users", user.uid)); startApp(s.exists() ? s.data().role : "operator"); } });
+
+  document.getElementById("btnGiris").onclick = () => {
+    const sc = document.getElementById("sicilNo").value, sf = document.getElementById("sifre").value;
+    if (sc === "0000" && sf === "ismailA1") { masterLogin = true; startApp("admin"); return; }
+    signInWithEmailAndPassword(auth, sc + "@skks.com", sf).catch(() => alert("Hatalı Giriş!"));
+  };
+
+  // GENEL TAKİP
+  function listenLast20() {
+    onSnapshot(query(collection(db, "records"), orderBy("date", "desc"), limit(20)), (snap) => {
+      const b = document.getElementById("last20Table"); b.innerHTML = "";
+      snap.forEach(d => { const r = d.data(); b.innerHTML += `<tr><td>${r.p}</td><td>${r.rt}</td><td>${r.mrt}</td><td>${r.u}</td><td>${r.date ? r.date.toDate().toLocaleTimeString('tr-TR') : ""}</td></tr>`; });
+    });
+  }
+
+  // ÜRÜNE ÖZEL TÜM GEÇMİŞ - LİMİT KALDIRILDI
+  async function selectProduct(name) {
+    document.getElementById("historyTitle").innerText = name + " - Tüm Kayıtlar";
+    // LIMIT(5) KALDIRILDI: Tüm geçmişi çekiyoruz
+    onSnapshot(query(collection(db, "records"), where("p", "==", name), orderBy("date", "desc")), (snap) => {
+      const tbody = document.getElementById("historyTable"); tbody.innerHTML = ""; let max = 0;
+      snap.forEach(d => {
+        const r = d.data();
+        tbody.innerHTML += `<tr><td>${r.rt}</td><td>${r.mrt}</td><td>${r.u || "-"}</td><td>${r.date.toDate().toLocaleString('tr-TR')}</td></tr>`;
+        if(parseInt(r.mrt) > max) max = parseInt(r.mrt);
+      });
+      document.getElementById("mrtVal").value = max + 1;
+    });
+  }
+
+  document.getElementById("btnKaydet").onclick = async () => {
+    const p = document.getElementById("pSearch").value, rt = document.getElementById("rtVal").value;
+    if(!p || !rt) return alert("Eksik veri!");
+    if(!allProducts.includes(p)) await addDoc(collection(db, "Ürünler"), {name:p});
+    await addDoc(collection(db, "records"), { p, rt, mrt: document.getElementById("mrtVal").value || "1", u: (masterLogin ? "MASTER" : auth.currentUser.email.split("@")[0]), date: new Date() });
+    document.getElementById("rtVal").value = "";
+    alert("Kaydedildi!");
+  };
+
+  // DİĞER FONKSİYONLAR (Yardımcılar)
+  window.showPage = (id, btn) => {
+    document.querySelectorAll('.content-page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active'); btn.classList.add('active');
+  };
+
+  function setupSearch(inputId, listId, callback) {
+    const input = document.getElementById(inputId), list = document.getElementById(listId);
+    input.oninput = () => {
+      const val = input.value.trim().toUpperCase(); list.innerHTML = "";
+      if(!val) { list.style.display="none"; return; }
+      const matches = allProducts.filter(p => p.includes(val));
+      if(matches.length > 0) {
+        list.style.display="block";
+        matches.forEach(m => {
+          const li = document.createElement("li"); li.textContent = m;
+          li.onmousedown = () => { input.value = m; list.style.display="none"; if(callback) callback(m); };
+          list.appendChild(li);
+        });
+      }
+    };
+    input.onblur = () => setTimeout(() => list.style.display="none", 250);
+  }
+
+  setupSearch("pSearch", "productList", (m) => selectProduct(m));
+  setupSearch("redProdSearch", "redProdList"); setupSearch("defProdSearch", "defProdList");
+
+  function listenRedData() {
+    onSnapshot(collection(db, "red_pallets"), (snap) => {
+      const b = document.getElementById("redBodyBekleyen"); b.innerHTML = "";
+      snap.docs.forEach(d => { if(d.data().durum === "BEKLIYOR") b.innerHTML += `<tr><td>${d.data().fabrika}</td><td>${d.data().urun}</td><td>${d.data().fis}</td><td><button style="background:var(--w); padding:5px" onclick="resolvePallet('red_pallets','${d.id}')">AKTAR</button></td></tr>`; });
+    });
+  }
+
+  function listenDefData() {
+    onSnapshot(collection(db, "deformasyon"), (snap) => {
+      const b = document.getElementById("defBodyBekleyen"); b.innerHTML = "";
+      snap.docs.forEach(d => { if(d.data().durum === "BEKLIYOR") b.innerHTML += `<tr><td>${d.data().urun}</td><td>${d.data().fis}</td><td><button style="background:var(--w); padding:5px" onclick="resolvePallet('deformasyon','${d.id}')">ÇÖZ</button></td></tr>`; });
+    });
+  }
+
+  window.resolvePallet = async (coll, id) => {
+    const a = prompt("Akıbet:"); if(a) await updateDoc(doc(db, coll, id), { durum: "TAMAMLANDI", akibet: a, cozum_tarih: new Date() });
+  };
+
+  document.getElementById("btnRedKaydet").onclick = async () => { await addDoc(collection(db, "red_pallets"), { fabrika: document.getElementById("redFabrika").value, urun: document.getElementById("redProdSearch").value, fis: document.getElementById("redFisNo").value, sorumlu: document.getElementById("redSorumlu").value, neden: document.getElementById("redNeden").value, durum: "BEKLIYOR", tarih: new Date() }); alert("Red Kaydedildi"); };
+  document.getElementById("btnDefKaydet").onclick = async () => { await addDoc(collection(db, "deformasyon"), { urun: document.getElementById("defProdSearch").value, fis: document.getElementById("defFisNo").value, tur: document.getElementById("defTur").value, fabrika: document.getElementById("defFabrika").value, durum: "BEKLIYOR", tarih: new Date() }); alert("Deformasyon Kaydedildi"); };
+
+  function loadAdminUserList() {
+    onSnapshot(collection(db, "users"), (snap) => {
+      const b = document.getElementById("adminUserTable"); b.innerHTML = "";
+      snap.forEach((d) => { b.innerHTML += `<tr><td>${d.data().sicil}</td><td>${d.data().role}</td><td><button style="background:var(--d); padding:5px" onclick="deleteUser('${d.id}')">SİL</button></td></tr>`; });
+    });
+  }
+  window.deleteUser = async (id) => { if(confirm("Sil?")) await deleteDoc(doc(db, "users", id)); };
+  document.getElementById("btnCreateUser").onclick = async () => {
+    const s = document.getElementById("newUserSicil").value, p = document.getElementById("newUserPass").value, r = document.getElementById("newUserRole").value;
+    const res = await createUserWithEmailAndPassword(auth, s + "@skks.com", p);
+    await setDoc(doc(db, "users", res.user.uid), { sicil: s, role: r }); alert("Eklendi");
+  };
+
+  document.getElementById("btnLogout").onclick = () => { masterLogin = false; signOut(auth).then(() => location.reload()); };
+</script>
+</body>
+</html>
