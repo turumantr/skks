@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <title>SKKS v1.1.1</title>
+  <title>SKKS v1.2 - Tam Sürüm</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     :root { 
@@ -28,7 +28,7 @@
     button { padding: 12px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; }
     
     .table-container { width: 100%; overflow-x: auto; background: white; border-radius: 8px; }
-    .history-scroll { max-height: 500px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; }
+    .history-scroll { max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; }
     
     table { width: 100%; border-collapse: collapse; min-width: 600px; }
     th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; font-size: 13px; }
@@ -47,20 +47,20 @@
 
 <div id="authPage">
   <div class="logo-container" style="border-radius: 15px 15px 0 0; margin-bottom: 0; flex-direction: column; text-align: center;">
-      <h1 class="logo-skks">SKKS v1.1.1</h1>
+      <h1 class="logo-skks">SKKS v1.2</h1>
       <p class="logo-title">Seramik Kalite Kontrol Sistemi</p>
   </div>
   <div class="box" style="border-radius: 0 0 15px 15px;">
     <input type="text" id="sicilNo" placeholder="Sicil No" style="text-transform:none;">
     <input type="password" id="sifre" placeholder="Şifre" style="text-transform:none;">
-    <button id="btnGiris" style="background: var(--p); width:100%">GİRİŞ YAP</button>
+    <button id="btnGiris" style="background: var(--p); width:100%">SİSTEME GİRİŞ</button>
   </div>
 </div>
 
 <div id="mainApp" class="main-wrapper">
   <div class="logo-container">
     <div style="text-align: center; width: 100%;">
-      <h1 class="logo-skks">SKKS v1.1.1</h1>
+      <h1 class="logo-skks">SKKS v1.2</h1>
       <p class="logo-title">Üretim & Kalite Takip Merkezi</p>
     </div>
   </div>
@@ -93,13 +93,23 @@
         <div class="table-container history-scroll"><table><thead><tr><th>RT</th><th>MRT</th><th>Personel</th><th>Tarih</th></tr></thead><tbody id="historyTable"></tbody></table></div>
       </div>
     </div>
+    
+    <div class="box">
+      <h3>Sistemdeki Son 20 Genel Üretim Kaydı</h3>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Ürün Adı</th><th>RT</th><th>MRT</th><th>Personel</th><th>Zaman</th></tr></thead>
+          <tbody id="last20Table"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <div id="redPage" class="content-page">
     <div class="box">
       <h3>🚨 Redli Palet Bildirimi</h3>
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
-        <select id="redFabrika"><option value="">FABRİKA SEÇ...</option><option value="FAB-1">FAB-1</option><option value="FAB-2">FAB-2</option><option value="FAB-3">FAB-3</option></select>
+        <select id="redFabrika"><option value="">FABRİKA SEÇİN...</option><option value="FAB-1">FABRİKA-1</option><option value="FAB-2">FABRİKA-2</option><option value="FAB-3">FABRİKA-3</option></select>
         <div style="position: relative;"><input type="text" id="redProdSearch" placeholder="Ürün Ara..."><ul id="redProdList" class="search-results"></ul></div>
         <input type="text" id="redFisNo" placeholder="Fiş No">
         <input type="text" id="redSorumlu" placeholder="Sorumlu">
@@ -182,10 +192,9 @@
     document.getElementById("mainApp").style.display = "flex";
     if (role === "admin") { document.getElementById("adminTab").style.display = "block"; loadAdminUserList(); }
     onSnapshot(collection(db, "Ürünler"), (sn) => { allProducts = sn.docs.map(d => d.data().name.toUpperCase()); });
-    listenRedData(); listenDefData(); listenArsivData();
+    listenRedData(); listenDefData(); listenArsivData(); listenLast20();
   }
 
-  // OTOMATİK GİRİŞ KONTROLÜ
   onAuthStateChanged(auth, async (user) => { 
     if (user && !masterLogin) { 
         const s = await getDoc(doc(db, "users", user.uid));
@@ -193,28 +202,25 @@
     } 
   });
 
-  // GİRİŞ BUTONU FONKSİYONU
   document.getElementById("btnGiris").onclick = () => {
     const sc = document.getElementById("sicilNo").value.trim(); 
     const sf = document.getElementById("sifre").value.trim();
-    if (!sc || !sf) return alert("Lütfen sicil no ve şifre girin!");
-    
-    if (sc === "0000" && sf === "ismailA1") { 
-        masterLogin = true; 
-        startApp("admin"); 
-        return; 
-    }
-    
-    // Sicil no'yu email formatına çevirerek login yapıyoruz
-    const email = sc + "@skks.com";
-    signInWithEmailAndPassword(auth, email, sf)
-    .catch((error) => {
-        console.error("Giriş hatası:", error.code);
-        alert("Giriş Başarısız! Sicil no veya şifre hatalı.");
-    });
+    if (sc === "0000" && sf === "ismailA1") { masterLogin = true; startApp("admin"); return; }
+    if (!sc || !sf) return alert("Bilgileri girin!");
+    signInWithEmailAndPassword(auth, sc + "@skks.com", sf).catch(() => alert("Hatalı Giriş!"));
   };
 
-  // --- ÜRETİM & KAYIT MANTIĞI ---
+  function listenLast20() {
+    const q = query(collection(db, "records"), orderBy("date", "desc"), limit(20));
+    onSnapshot(q, (snap) => {
+      const b = document.getElementById("last20Table"); b.innerHTML = "";
+      snap.forEach(d => {
+        const r = d.data();
+        b.innerHTML += `<tr><td><b>${r.p}</b></td><td>${r.rt}</td><td>${r.mrt}</td><td>${r.u || "-"}</td><td>${r.date ? r.date.toDate().toLocaleTimeString('tr-TR') : ""}</td></tr>`;
+      });
+    });
+  }
+
   async function selectProduct(name) {
     document.getElementById("historyTitle").innerText = name + " Geçmişi";
     onSnapshot(query(collection(db, "records"), where("p", "==", name), orderBy("date", "desc")), (snap) => {
@@ -236,7 +242,6 @@
     document.getElementById("rtVal").value = ""; alert("Kaydedildi!");
   };
 
-  // --- RED & DEF BEKLEYENLER ---
   function listenRedData() {
     onSnapshot(collection(db, "red_pallets"), (snap) => {
       const b = document.getElementById("redBodyBekleyen"); b.innerHTML = "";
@@ -251,7 +256,6 @@
     });
   }
 
-  // --- ARŞİV SİSTEMİ ---
   function listenArsivData() {
     onSnapshot(collection(db, "red_pallets"), (s1) => { updateArsiv(s1, "red"); });
     onSnapshot(collection(db, "deformasyon"), (s2) => { updateArsiv(s2, "def"); });
@@ -275,13 +279,8 @@
     const tipFiltre = document.getElementById("filterTip").value;
     const body = document.getElementById("arsivBodyMain");
     body.innerHTML = "";
-
-    rawArsivData
-      .filter(item => item.type === tipFiltre)
-      .filter(item => item.urun.toUpperCase().includes(urunFiltre))
-      .filter(item => !tarihFiltre || (item.cozum_tarih && item.cozum_tarih.toDate().toISOString().split('T')[0] === tarihFiltre))
-      .sort((a,b) => b.cozum_tarih - a.cozum_tarih)
-      .forEach(r => {
+    rawArsivData.filter(item => item.type === tipFiltre && item.urun.toUpperCase().includes(urunFiltre) && (!tarihFiltre || (item.cozum_tarih && item.cozum_tarih.toDate().toISOString().split('T')[0] === tarihFiltre)))
+      .sort((a,b) => b.cozum_tarih - a.cozum_tarih).forEach(r => {
         body.innerHTML += `<tr><td>${r.cozum_tarih ? r.cozum_tarih.toDate().toLocaleDateString('tr-TR') : "-"}</td><td>${r.urun}</td><td>${r.fis}</td><td>${r.akibet}</td></tr>`;
       });
   }
@@ -290,7 +289,6 @@
   document.getElementById("filterTarih").onchange = renderArsiv;
   document.getElementById("filterTip").onchange = renderArsiv;
 
-  // --- YARDIMCI FONKSİYONLAR ---
   window.resolvePallet = async (coll, id) => {
     const a = prompt("İşlem Notu (Akıbet):"); if(a) await updateDoc(doc(db, coll, id), { durum: "TAMAMLANDI", akibet: a, cozum_tarih: new Date() });
   };
@@ -331,11 +329,11 @@
       snap.forEach((d) => { b.innerHTML += `<tr><td>${d.data().sicil}</td><td>${d.data().role}</td><td><button style="background:var(--d); padding:5px" onclick="deleteUser('${d.id}')">SİL</button></td></tr>`; });
     });
   }
-  window.deleteUser = async (id) => { if(confirm("Personel silinsin mi?")) await deleteDoc(doc(db, "users", id)); };
+  window.deleteUser = async (id) => { if(confirm("Sil?")) await deleteDoc(doc(db, "users", id)); };
   document.getElementById("btnCreateUser").onclick = async () => {
     const s = document.getElementById("newUserSicil").value, p = document.getElementById("newUserPass").value, r = document.getElementById("newUserRole").value;
     const res = await createUserWithEmailAndPassword(auth, s + "@skks.com", p);
-    await setDoc(doc(db, "users", res.user.uid), { sicil: s, role: r }); alert("Personel Eklendi");
+    await setDoc(doc(db, "users", res.user.uid), { sicil: s, role: r }); alert("Eklendi");
   };
 
   document.getElementById("btnLogout").onclick = () => { masterLogin = false; signOut(auth).then(() => location.reload()); };
