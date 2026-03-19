@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <title>SKKS v1.1</title>
+  <title>SKKS v1.1.1</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     :root { 
@@ -47,7 +47,7 @@
 
 <div id="authPage">
   <div class="logo-container" style="border-radius: 15px 15px 0 0; margin-bottom: 0; flex-direction: column; text-align: center;">
-      <h1 class="logo-skks">SKKS v1.1</h1>
+      <h1 class="logo-skks">SKKS v1.1.1</h1>
       <p class="logo-title">Seramik Kalite Kontrol Sistemi</p>
   </div>
   <div class="box" style="border-radius: 0 0 15px 15px;">
@@ -60,7 +60,7 @@
 <div id="mainApp" class="main-wrapper">
   <div class="logo-container">
     <div style="text-align: center; width: 100%;">
-      <h1 class="logo-skks">SKKS v1.1</h1>
+      <h1 class="logo-skks">SKKS v1.1.1</h1>
       <p class="logo-title">Üretim & Kalite Takip Merkezi</p>
     </div>
   </div>
@@ -133,7 +133,7 @@
         <select id="filterTip" style="margin:0;"><option value="red">RED ARŞİVİ</option><option value="def">DEF. ARŞİVİ</option></select>
       </div>
       <div class="table-container history-scroll">
-        <table id="arsivTableMain">
+        <table>
           <thead><tr><th>Tarih</th><th>Ürün</th><th>Fiş No</th><th>Akıbet / Çözüm</th></tr></thead>
           <tbody id="arsivBodyMain"></tbody>
         </table>
@@ -185,15 +185,36 @@
     listenRedData(); listenDefData(); listenArsivData();
   }
 
-  onAuthStateChanged(auth, async (user) => { if (user && !masterLogin) { const s = await getDoc(doc(db, "users", user.uid)); startApp(s.exists() ? s.data().role : "operator"); } });
+  // OTOMATİK GİRİŞ KONTROLÜ
+  onAuthStateChanged(auth, async (user) => { 
+    if (user && !masterLogin) { 
+        const s = await getDoc(doc(db, "users", user.uid));
+        startApp(s.exists() ? s.data().role : "operator"); 
+    } 
+  });
 
+  // GİRİŞ BUTONU FONKSİYONU
   document.getElementById("btnGiris").onclick = () => {
-    const sc = document.getElementById("sicilNo").value, sf = document.getElementById("sifre").value;
-    if (sc === "0000" && sf === "ismailA1") { masterLogin = true; startApp("admin"); return; }
-    signInWithEmailAndPassword(auth, sc + "@skks.com", sf).catch(() => alert("Giriş Başarısız!"));
+    const sc = document.getElementById("sicilNo").value.trim(); 
+    const sf = document.getElementById("sifre").value.trim();
+    if (!sc || !sf) return alert("Lütfen sicil no ve şifre girin!");
+    
+    if (sc === "0000" && sf === "ismailA1") { 
+        masterLogin = true; 
+        startApp("admin"); 
+        return; 
+    }
+    
+    // Sicil no'yu email formatına çevirerek login yapıyoruz
+    const email = sc + "@skks.com";
+    signInWithEmailAndPassword(auth, email, sf)
+    .catch((error) => {
+        console.error("Giriş hatası:", error.code);
+        alert("Giriş Başarısız! Sicil no veya şifre hatalı.");
+    });
   };
 
-  // ÜRETİM MANTIĞI
+  // --- ÜRETİM & KAYIT MANTIĞI ---
   async function selectProduct(name) {
     document.getElementById("historyTitle").innerText = name + " Geçmişi";
     onSnapshot(query(collection(db, "records"), where("p", "==", name), orderBy("date", "desc")), (snap) => {
@@ -215,7 +236,7 @@
     document.getElementById("rtVal").value = ""; alert("Kaydedildi!");
   };
 
-  // RED & DEF VERİ DİNLEME (BEKLEYENLER)
+  // --- RED & DEF BEKLEYENLER ---
   function listenRedData() {
     onSnapshot(collection(db, "red_pallets"), (snap) => {
       const b = document.getElementById("redBodyBekleyen"); b.innerHTML = "";
@@ -230,7 +251,7 @@
     });
   }
 
-  // ARŞİV MANTIĞI VE FİLTRELEME
+  // --- ARŞİV SİSTEMİ ---
   function listenArsivData() {
     onSnapshot(collection(db, "red_pallets"), (s1) => { updateArsiv(s1, "red"); });
     onSnapshot(collection(db, "deformasyon"), (s2) => { updateArsiv(s2, "def"); });
@@ -240,8 +261,9 @@
     snap.docs.forEach(d => {
       const r = d.data();
       if(r.durum === "TAMAMLANDI") {
-        const existing = rawArsivData.find(x => x.id === d.id);
-        if(!existing) rawArsivData.push({ ...r, id: d.id, type: type });
+        const existingIdx = rawArsivData.findIndex(x => x.id === d.id);
+        if(existingIdx === -1) rawArsivData.push({ ...r, id: d.id, type: type });
+        else rawArsivData[existingIdx] = { ...r, id: d.id, type: type };
       }
     });
     renderArsiv();
@@ -264,12 +286,11 @@
       });
   }
 
-  // Filtreleme tetikleyicileri
   document.getElementById("filterUrun").oninput = renderArsiv;
   document.getElementById("filterTarih").onchange = renderArsiv;
   document.getElementById("filterTip").onchange = renderArsiv;
 
-  // Ortak fonksiyonlar
+  // --- YARDIMCI FONKSİYONLAR ---
   window.resolvePallet = async (coll, id) => {
     const a = prompt("İşlem Notu (Akıbet):"); if(a) await updateDoc(doc(db, coll, id), { durum: "TAMAMLANDI", akibet: a, cozum_tarih: new Date() });
   };
