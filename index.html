@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <title>SKKS v1.0 - Tam Sürüm</title>
+  <title>Uşak Seramik - SKKS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     :root { 
@@ -47,8 +47,8 @@
 
 <div id="authPage">
   <div class="logo-container" style="border-radius: 15px 15px 0 0; margin-bottom: 0; flex-direction: column; text-align: center;">
-      <h1 class="logo-skks">SKKS v1.0</h1>
-      <p class="logo-title">Seramik Kalite Kontrol Sistemi</p>
+      <h1 class="logo-skks">UŞAK SERAMİK</h1>
+      <p class="logo-title">Kalite Kontrol Sistemi</p>
   </div>
   <div class="box" style="border-radius: 0 0 15px 15px;">
     <input type="text" id="sicilNo" placeholder="Sicil No" style="text-transform:none;">
@@ -60,7 +60,7 @@
 <div id="mainApp" class="main-wrapper">
   <div class="logo-container">
     <div style="text-align: center; width: 100%;">
-      <h1 class="logo-skks">SKKS v1.0</h1>
+      <h1 class="logo-skks">UŞAK SERAMİK</h1>
       <p class="logo-title">Üretim & Kalite Takip Merkezi</p>
     </div>
   </div>
@@ -83,14 +83,15 @@
           <ul id="productList" class="search-results"></ul>
         </div>
         <div style="display:flex; gap:10px">
-          <input type="number" id="rtVal" placeholder="Renk Tonu (RT)">
+          <input type="number" id="rtVal" placeholder="RT">
           <input type="number" id="mrtVal" placeholder="MRT" style="background: white; font-weight:bold; color:var(--s)">
+          <input type="number" id="mrtsVal" placeholder="MRTS" style="background: #fff9e6; font-weight:bold; color:var(--w)">
         </div>
         <button id="btnKaydet" style="background:var(--s); width:100%; margin-top:10px">VERİYİ KAYDET</button>
       </div>
       <div class="box" style="flex: 1; min-width: 320px;">
         <h3 id="historyTitle">Ürün Geçmişi</h3>
-        <div class="table-container history-scroll"><table><thead><tr><th>RT</th><th>MRT</th><th>Personel</th><th>Tarih</th></tr></thead><tbody id="historyTable"></tbody></table></div>
+        <div class="table-container history-scroll"><table><thead><tr><th>RT</th><th>MRT</th><th>MRTS</th><th>Personel</th><th>Tarih</th></tr></thead><tbody id="historyTable"></tbody></table></div>
       </div>
     </div>
     
@@ -98,7 +99,7 @@
       <h3>Sistemdeki Son 20 Genel Üretim Kaydı</h3>
       <div class="table-container">
         <table>
-          <thead><tr><th>Ürün Adı</th><th>RT</th><th>MRT</th><th>Personel</th><th>Zaman</th></tr></thead>
+          <thead><tr><th>Ürün Adı</th><th>RT</th><th>MRT</th><th>MRTS</th><th>Personel</th><th>Zaman</th></tr></thead>
           <tbody id="last20Table"></tbody>
         </table>
       </div>
@@ -216,7 +217,7 @@
       const b = document.getElementById("last20Table"); b.innerHTML = "";
       snap.forEach(d => {
         const r = d.data();
-        b.innerHTML += `<tr><td><b>${r.p}</b></td><td>${r.rt}</td><td>${r.mrt}</td><td>${r.u || "-"}</td><td>${r.date ? r.date.toDate().toLocaleTimeString('tr-TR') : ""}</td></tr>`;
+        b.innerHTML += `<tr><td><b>${r.p}</b></td><td>${r.rt}</td><td>${r.mrt || "-"}</td><td>${r.mrts || "-"}</td><td>${r.u || "-"}</td><td>${r.date ? r.date.toDate().toLocaleTimeString('tr-TR') : ""}</td></tr>`;
       });
     });
   }
@@ -224,22 +225,39 @@
   async function selectProduct(name) {
     document.getElementById("historyTitle").innerText = name + " Geçmişi";
     onSnapshot(query(collection(db, "records"), where("p", "==", name), orderBy("date", "desc")), (snap) => {
-      const tbody = document.getElementById("historyTable"); tbody.innerHTML = ""; let max = 0;
+      const tbody = document.getElementById("historyTable"); tbody.innerHTML = ""; 
+      let maxMRT = 0; let maxMRTS = 0;
       snap.forEach(d => {
         const r = d.data();
-        tbody.innerHTML += `<tr><td>${r.rt}</td><td>${r.mrt}</td><td>${r.u || "-"}</td><td>${r.date.toDate().toLocaleString('tr-TR')}</td></tr>`;
-        if(parseInt(r.mrt) > max) max = parseInt(r.mrt);
+        tbody.innerHTML += `<tr><td>${r.rt}</td><td>${r.mrt || "-"}</td><td>${r.mrts || "-"}</td><td>${r.u || "-"}</td><td>${r.date.toDate().toLocaleString('tr-TR')}</td></tr>`;
+        if(r.mrt && parseInt(r.mrt) > maxMRT) maxMRT = parseInt(r.mrt);
+        if(r.mrts && parseInt(r.mrts) > maxMRTS) maxMRTS = parseInt(r.mrts);
       });
-      document.getElementById("mrtVal").value = max + 1;
+      document.getElementById("mrtVal").value = maxMRT > 0 ? maxMRT + 1 : "";
+      document.getElementById("mrtsVal").value = maxMRTS > 0 ? maxMRTS + 1 : "";
     });
   }
 
   document.getElementById("btnKaydet").onclick = async () => {
-    const p = document.getElementById("pSearch").value, rt = document.getElementById("rtVal").value, mrt = document.getElementById("mrtVal").value;
-    if(!p || !rt || !mrt) return alert("Eksik veri!");
+    const p = document.getElementById("pSearch").value, rt = document.getElementById("rtVal").value;
+    const mrt = document.getElementById("mrtVal").value;
+    const mrts = document.getElementById("mrtsVal").value;
+
+    if(!p || !rt) return alert("Ürün Adı ve RT zorunludur!");
     if(!allProducts.includes(p)) await addDoc(collection(db, "Ürünler"), {name:p});
-    await addDoc(collection(db, "records"), { p, rt, mrt: mrt, u: (masterLogin ? "MASTER" : auth.currentUser.email.split("@")[0]), date: new Date() });
-    document.getElementById("rtVal").value = ""; alert("Kaydedildi!");
+    
+    await addDoc(collection(db, "records"), { 
+        p, 
+        rt, 
+        mrt: mrt || "", 
+        mrts: mrts || "", 
+        u: (masterLogin ? "MASTER" : auth.currentUser.email.split("@")[0]), 
+        date: new Date() 
+    });
+    
+    document.getElementById("rtVal").value = "";
+    document.getElementById("mrtsVal").value = ""; 
+    alert("Kaydedildi!");
   };
 
   function listenRedData() {
