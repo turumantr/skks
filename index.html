@@ -23,8 +23,14 @@
     .content-page { display: none; width: 100%; animation: fadeIn 0.3s; flex-direction: column; gap: 15px; }
     .content-page.active { display: flex; }
     
-    input, select, textarea { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
-    input { text-transform: uppercase; }
+    /* Girdi Alanları İçin Büyük Harf Zorunluluğu (Görsel) */
+    input, select, textarea { 
+      width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; 
+      text-transform: uppercase; 
+    }
+    /* Şifre ve Sicil gibi alanlarda görsel büyük harfi kapatıyoruz ki karmaşa olmasın */
+    #sifre, #sicilNo, #newUserPass { text-transform: none; }
+
     button { padding: 12px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; }
     
     .table-container { width: 100%; overflow-x: auto; background: white; border-radius: 8px; }
@@ -51,8 +57,8 @@
       <p class="logo-title">Kalite Kontrol Sistemi</p>
   </div>
   <div class="box" style="border-radius: 0 0 15px 15px;">
-    <input type="text" id="sicilNo" placeholder="Sicil No" style="text-transform:none;">
-    <input type="password" id="sifre" placeholder="Şifre" style="text-transform:none;">
+    <input type="text" id="sicilNo" placeholder="Sicil No">
+    <input type="password" id="sifre" placeholder="Şifre">
     <button id="btnGiris" style="background: var(--p); width:100%">SİSTEME GİRİŞ</button>
   </div>
 </div>
@@ -188,6 +194,9 @@
   let masterLogin = false;
   let rawArsivData = [];
 
+  // Veritabanına kaydedilmeden önce her string değeri büyük harfe çeviren yardımcı fonksiyon
+  const toUpper = (val) => val ? val.toString().toLocaleUpperCase('tr-TR') : "";
+
   function startApp(role) {
     document.getElementById("authPage").style.display = "none";
     document.getElementById("mainApp").style.display = "flex";
@@ -239,7 +248,7 @@
   }
 
   document.getElementById("btnKaydet").onclick = async () => {
-    const p = document.getElementById("pSearch").value, rt = document.getElementById("rtVal").value;
+    const p = toUpper(document.getElementById("pSearch").value), rt = document.getElementById("rtVal").value;
     const mrt = document.getElementById("mrtVal").value;
     const mrts = document.getElementById("mrtsVal").value;
 
@@ -292,7 +301,7 @@
   }
 
   function renderArsiv() {
-    const urunFiltre = document.getElementById("filterUrun").value.toUpperCase();
+    const urunFiltre = toUpper(document.getElementById("filterUrun").value);
     const tarihFiltre = document.getElementById("filterTarih").value;
     const tipFiltre = document.getElementById("filterTip").value;
     const body = document.getElementById("arsivBodyMain");
@@ -308,7 +317,8 @@
   document.getElementById("filterTip").onchange = renderArsiv;
 
   window.resolvePallet = async (coll, id) => {
-    const a = prompt("İşlem Notu (Akıbet):"); if(a) await updateDoc(doc(db, coll, id), { durum: "TAMAMLANDI", akibet: a, cozum_tarih: new Date() });
+    let a = prompt("İşlem Notu (Akıbet):"); 
+    if(a) await updateDoc(doc(db, coll, id), { durum: "TAMAMLANDI", akibet: toUpper(a), cozum_tarih: new Date() });
   };
 
   window.showPage = (id, btn) => {
@@ -320,7 +330,7 @@
   function setupSearch(inputId, listId, callback) {
     const input = document.getElementById(inputId), list = document.getElementById(listId);
     input.oninput = () => {
-      const val = input.value.trim().toUpperCase(); list.innerHTML = "";
+      const val = toUpper(input.value.trim()); list.innerHTML = "";
       if(!val) { list.style.display="none"; return; }
       const matches = allProducts.filter(p => p.includes(val));
       if(matches.length > 0) {
@@ -338,8 +348,30 @@
   setupSearch("pSearch", "productList", (m) => selectProduct(m));
   setupSearch("redProdSearch", "redProdList"); setupSearch("defProdSearch", "defProdList");
 
-  document.getElementById("btnRedKaydet").onclick = async () => { await addDoc(collection(db, "red_pallets"), { fabrika: document.getElementById("redFabrika").value, urun: document.getElementById("redProdSearch").value, fis: document.getElementById("redFisNo").value, sorumlu: document.getElementById("redSorumlu").value, neden: document.getElementById("redNeden").value, durum: "BEKLIYOR", tarih: new Date() }); alert("Red Kaydedildi"); };
-  document.getElementById("btnDefKaydet").onclick = async () => { await addDoc(collection(db, "deformasyon"), { urun: document.getElementById("defProdSearch").value, fis: document.getElementById("defFisNo").value, tur: document.getElementById("defTur").value, fabrika: document.getElementById("defFabrika").value, durum: "BEKLIYOR", tarih: new Date() }); alert("Deformasyon Kaydedildi"); };
+  document.getElementById("btnRedKaydet").onclick = async () => { 
+    await addDoc(collection(db, "red_pallets"), { 
+      fabrika: document.getElementById("redFabrika").value, 
+      urun: toUpper(document.getElementById("redProdSearch").value), 
+      fis: toUpper(document.getElementById("redFisNo").value), 
+      sorumlu: toUpper(document.getElementById("redSorumlu").value), 
+      neden: toUpper(document.getElementById("redNeden").value), 
+      durum: "BEKLIYOR", 
+      tarih: new Date() 
+    }); 
+    alert("Red Kaydedildi"); 
+  };
+  
+  document.getElementById("btnDefKaydet").onclick = async () => { 
+    await addDoc(collection(db, "deformasyon"), { 
+      urun: toUpper(document.getElementById("defProdSearch").value), 
+      fis: toUpper(document.getElementById("defFisNo").value), 
+      tur: toUpper(document.getElementById("defTur").value), 
+      fabrika: document.getElementById("defFabrika").value, 
+      durum: "BEKLIYOR", 
+      tarih: new Date() 
+    }); 
+    alert("Deformasyon Kaydedildi"); 
+  };
 
   function loadAdminUserList() {
     onSnapshot(collection(db, "users"), (snap) => {
