@@ -28,9 +28,10 @@
       width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; 
       text-transform: uppercase; 
     }
-    #sifre, #sicilNo, #newUserPass, #chatMessage { text-transform: none; } /* Chat mesajları ve şifreler serbest */
+    #sifre, #sicilNo, #newUserPass, #chatMessage, #secretPinInput { text-transform: none; } /* Chat mesajları ve şifreler serbest */
 
     button { padding: 12px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
     
     .table-container { width: 100%; overflow-x: auto; background: white; border-radius: 8px; }
     .history-scroll { max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; }
@@ -49,12 +50,14 @@
     .chat-item.self { align-self: flex-end; background: #e8f8f5; border-left: none; border-right: 4px solid var(--s); }
     .chat-item.deleted-msg { background: #f8d7da; border-color: #f5c6cb; color: #721c24; font-style: italic; }
     .chat-header { font-size: 11px; font-weight: bold; color: var(--p); margin-bottom: 4px; display: flex; justify-content: space-between; gap: 15px; }
-    .chat-body { font-size: 13px; color: #333; word-break: break-word; }
+    .chat-body { font-size: 13px; color: #333; word-break: break-word; white-space: pre-wrap; }
     .chat-img { max-width: 220px; max-height: 220px; border-radius: 8px; margin-top: 8px; cursor: pointer; border: 1px solid #ddd; }
     
     .chat-actions { display: flex; gap: 8px; margin-top: 6px; font-size: 11px; justify-content: flex-end; }
     .chat-action-btn { background: none; border: none; padding: 2px 5px; color: #7f8c8d; cursor: pointer; font-size: 11px; font-weight: normal; }
     .chat-action-btn:hover { text-decoration: underline; color: var(--p); }
+
+    .error-text { color: var(--d); font-size: 12px; font-weight: bold; display: block; min-height: 16px; margin-top: -2px; }
 
     #authPage { width: 100%; max-width: 380px; margin-top: 10vh; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -70,6 +73,7 @@
   <div class="box" style="border-radius: 0 0 15px 15px;">
     <input type="text" id="sicilNo" placeholder="Sicil No">
     <input type="password" id="sifre" placeholder="Şifre">
+    <span id="loginError" class="error-text"></span>
     <button id="btnGiris" style="background: var(--p); width:100%">SİSTEME GİRİŞ</button>
   </div>
 </div>
@@ -77,7 +81,7 @@
 <div id="mainApp" class="main-wrapper">
   <div class="logo-container">
     <div style="text-align: center; width: 100%;">
-      <h1 class="logo-skks">UŞAK SERAMİK</h1>
+      <h1 class="logo-skks" id="mainLogoTrigger" style="user-select:none;">UŞAK SERAMİK</h1>
       <p class="logo-title">Üretim & Kalite Takip Merkezi</p>
     </div>
   </div>
@@ -86,7 +90,6 @@
     <button class="tab-btn active" onclick="showPage('kayitPage', this)">📌 ÜRETİM</button>
     <button class="tab-btn" onclick="showPage('redPage', this)">🚨 RED TAKİBİ</button>
     <button class="tab-btn" onclick="showPage('defPage', this)">🟣 DEFORMASYON</button>
-    <button class="tab-btn" style="background: var(--cer); color: white;" onclick="showPage('chatPage', this)">💬 İLETİŞİM</button>
     <button class="tab-btn" style="background: var(--ars); color: white;" onclick="showPage('arsivPage', this)">📂 ARŞİV</button>
     <button id="adminTab" class="tab-btn" style="display:none" onclick="showPage('personelPage', this)">👥 PERSONEL</button>
     
@@ -160,32 +163,6 @@
     <div class="box"><h4>Bekleyen Deformasyonlar</h4><div class="table-container"><table><thead><tr><th>Fab.</th><th>Ürün</th><th>Fiş</th><th>İşlem</th></tr></thead><tbody id="defBodyBekleyen"></tbody></table></div></div>
   </div>
 
-  <!-- İLETİŞİM & CHAT MODÜLÜ -->
-  <div id="chatPage" class="content-page">
-    <div class="box" style="border-left: 6px solid var(--cer);">
-      <h3>💬 Vardiya & Personel İletişim</h3>
-      <div id="chatBox" style="height: 380px; overflow-y: auto; border: 1px solid #eee; padding: 15px; border-radius: 10px; margin-bottom: 12px; background: #fafafa; display: flex; flex-direction: column;">
-        <!-- Mesajlar Buraya Akacak -->
-      </div>
-      
-      <!-- Düzenleme İptal Barı -->
-      <div id="editCancelBar" style="display: none; background: #e1f5fe; padding: 6px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 6px; justify-content: space-between; align-items: center;">
-        <span>✏️ <b>Mesaj düzenleniyor...</b></span>
-        <button id="btnCancelEdit" style="background: none; color: var(--d); padding: 0; font-size: 12px; border: none; cursor: pointer;">İptal Et</button>
-      </div>
-
-      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-        <input type="text" id="chatMessage" placeholder="Mesajınızı veya notunuzu yazın..." style="margin:0; flex:1; min-width: 200px;">
-        <label style="background: var(--p); color: white; padding: 12px 15px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: bold;">
-          📷 FOTOĞRAF
-          <input type="file" id="chatFile" accept="image/*" style="display:none;">
-        </label>
-        <button id="btnSendChat" style="background: var(--s); margin:0; padding: 12px 20px;">GÖNDER</button>
-      </div>
-      <span id="fileNameDisplay" style="font-size: 11px; color: var(--s); margin-top: 5px; display: block; font-weight: bold;"></span>
-    </div>
-  </div>
-
   <!-- ARŞİV -->
   <div id="arsivPage" class="content-page">
     <div class="box" style="border-left: 6px solid var(--ars);">
@@ -210,11 +187,55 @@
       <h3>Personel Yönetimi</h3>
       <div style="display:flex; gap:10px">
         <input type="number" id="newUserSicil" placeholder="Sicil No">
-        <input type="password" id="newUserPass" placeholder="Şifre">
+        <input type="password" id="newUserPass" placeholder="Şifre (en az 6 karakter)">
         <select id="newUserRole"><option value="operator">OPERATÖR</option><option value="admin">ADMİN</option></select>
       </div>
       <button id="btnCreateUser" style="background:var(--p); width:100%; margin-top:10px">YENİ PERSONEL EKLE</button>
       <div class="table-container" style="margin-top:20px"><table><thead><tr><th>Sicil</th><th>Yetki</th><th>İşlem</th></tr></thead><tbody id="adminUserTable"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- GİZLİ ERİŞİM: normal tab akışının dışında, sadece PIN doğrulandıktan sonra görünür -->
+<div id="secretChatOverlay" style="display:none; position:fixed; inset:0; background:var(--bg); z-index:9998; overflow-y:auto; padding:10px; box-sizing:border-box;">
+  <div style="max-width:700px; margin:0 auto; display:flex; flex-direction:column; gap:15px;">
+    <div class="box" style="border-left: 6px solid var(--cer); display:flex; justify-content:space-between; align-items:center; margin-bottom:0;">
+      <h3 style="margin:0;">💬 Özel Mesajlar</h3>
+      <button id="btnLockChat" style="background:var(--d); padding:8px 14px; font-size:12px;">🔒 Kilitle</button>
+    </div>
+    <div class="box" style="border-left: 6px solid var(--cer);">
+      <div id="chatBox" style="height: 380px; overflow-y: auto; border: 1px solid #eee; padding: 15px; border-radius: 10px; margin-bottom: 12px; background: #fafafa; display: flex; flex-direction: column;">
+        <!-- Mesajlar Buraya Akacak -->
+      </div>
+
+      <!-- Düzenleme İptal Barı -->
+      <div id="editCancelBar" style="display: none; background: #e1f5fe; padding: 6px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 6px; justify-content: space-between; align-items: center;">
+        <span>✏️ <b>Mesaj düzenleniyor...</b></span>
+        <button id="btnCancelEdit" style="background: none; color: var(--d); padding: 0; font-size: 12px; border: none; cursor: pointer;">İptal Et</button>
+      </div>
+
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <input type="text" id="chatMessage" placeholder="Mesajınızı veya notunuzu yazın..." style="margin:0; flex:1; min-width: 200px;">
+        <label style="background: var(--p); color: white; padding: 12px 15px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: bold;">
+          📷 FOTOĞRAF
+          <input type="file" id="chatFile" accept="image/*" style="display:none;">
+        </label>
+        <button id="btnSendChat" style="background: var(--s); margin:0; padding: 12px 20px;">GÖNDER</button>
+      </div>
+      <span id="fileNameDisplay" style="font-size: 11px; color: var(--s); margin-top: 5px; display: block; font-weight: bold;"></span>
+    </div>
+  </div>
+</div>
+
+<!-- PIN Modalı: logoya 5 kez dokununca açılır -->
+<div id="pinModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center;">
+  <div style="background:white; padding:25px; border-radius:15px; width:90%; max-width:300px; text-align:center; box-sizing:border-box;">
+    <p style="font-weight:bold; margin:0 0 10px 0; color:var(--p);">Erişim Kodu</p>
+    <input type="password" id="secretPinInput" placeholder="PIN GİRİN" style="text-align:center; letter-spacing:4px; margin:0 0 4px 0;">
+    <span id="pinError" class="error-text"></span>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button id="btnPinCancel" style="background:#95a5a6; flex:1; margin:0;">Vazgeç</button>
+      <button id="btnPinConfirm" style="background:var(--p); flex:1; margin:0;">Onayla</button>
     </div>
   </div>
 </div>
@@ -243,20 +264,33 @@
   const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
   const secondaryAuth = getAuth(secondaryApp);
 
+  const MAX_IMAGE_MB = 5;
+
   let allProducts = [];
-  let masterLogin = false;
   let rawArsivData = [];
   let selectedFile = null;
-  let editingMessageId = null; 
+  let editingMessageId = null;
+  let unsubHistory = null;        // ürün geçmişi dinleyicisi - sızıntıyı önlemek için tutuluyor
+  let unsubChat = null;           // gizli mesaj dinleyicisi - kilitlenince kapatılır
+  let secretTapCount = 0;
+  let secretTapTimer = null;
+  const chatTextCache = {};       // msgId -> ham metin (düzenleme için, HTML enjeksiyonu olmadan)
+
+  // ---- Güvenlik: kullanıcı verisini HTML'e basmadan önce escape et ----
+  function esc(val) {
+    if (val === null || val === undefined) return "";
+    return val.toString().replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
 
   const toUpper = (val) => val ? val.toString().toLocaleUpperCase('tr-TR') : "";
-  const currentUserSicil = () => masterLogin ? "MASTER" : (auth.currentUser ? auth.currentUser.email.split("@")[0] : "Anonim");
+  const currentUserSicil = () => (auth.currentUser ? auth.currentUser.email.split("@")[0] : "Anonim");
 
   function startApp(role) {
     document.getElementById("authPage").style.display = "none";
     document.getElementById("mainApp").style.display = "flex";
     
-    // Giriş yapan kullanıcının adını/sicilini güncelle
     document.getElementById("userInfo").innerText = "👤 " + currentUserSicil();
 
     if (role === "admin") { 
@@ -267,28 +301,51 @@
     }
 
     onSnapshot(collection(db, "Ürünler"), (sn) => { allProducts = sn.docs.map(d => d.data().name ? d.data().name.toUpperCase() : ""); });
-    listenRedData(); listenDefData(); listenArsivData(); listenLast20(); listenChatMessages();
+    listenRedData(); listenDefData(); listenArsivData(); listenLast20();
+    // Not: chat_messages dinlemesi burada başlatılmıyor; sadece gizli PIN doğrulandıktan
+    // sonra unlockSecretChat() çağrılınca başlar. Böylece telefonu eline alan biri
+    // normal arayüzü gezerken mesaj verisi hiç yüklenmiyor/görünmüyor.
+    setupSecretAccess();
   }
 
   onAuthStateChanged(auth, async (user) => { 
-    if (user && !masterLogin) { 
+    if (user) { 
         const s = await getDoc(doc(db, "users", user.uid));
         startApp(s.exists() ? s.data().role : "operator"); 
     } 
   });
 
+  // ---- Giriş: artık istisnasız tüm kullanıcılar (admin dahil) Firebase Auth üzerinden doğrulanıyor.
+  // "0000" sicil numaralı ilk admin, Firebase Console'dan (Authentication + Firestore "users" koleksiyonu
+  // içine role:"admin" belgesi eklenerek) manuel olarak oluşturulmalıdır. Kodda gömülü şifre YOKTUR.
   document.getElementById("btnGiris").onclick = () => {
+    const errEl = document.getElementById("loginError");
+    errEl.innerText = "";
     const sc = document.getElementById("sicilNo").value.trim(); 
     const sf = document.getElementById("sifre").value.trim();
-    if (sc === "0000" && sf === "ismailA1") { masterLogin = true; startApp("admin"); return; }
-    if (!sc || !sf) return alert("Bilgileri girin!");
-    signInWithEmailAndPassword(auth, sc + "@skks.com", sf).catch(() => alert("Hatalı Giriş!"));
+    if (!sc || !sf) { errEl.innerText = "Bilgileri girin!"; return; }
+
+    const btn = document.getElementById("btnGiris");
+    btn.disabled = true; btn.innerText = "Giriş yapılıyor...";
+
+    signInWithEmailAndPassword(auth, sc + "@skks.com", sf)
+      .catch(() => { errEl.innerText = "Hatalı Sicil No veya Şifre!"; })
+      .finally(() => { btn.disabled = false; btn.innerText = "SİSTEME GİRİŞ"; });
   };
 
   // CHAT MODÜLÜ İŞLEMLERİ
   document.getElementById("chatFile").onchange = (e) => {
-    selectedFile = e.target.files[0];
-    if(selectedFile) document.getElementById("fileNameDisplay").innerText = "Seçilen Görsel: " + selectedFile.name;
+    const f = e.target.files[0];
+    if (!f) return;
+    if (f.size > MAX_IMAGE_MB * 1024 * 1024) {
+      alert(`Görsel çok büyük! Maksimum ${MAX_IMAGE_MB}MB olmalı.`);
+      e.target.value = "";
+      selectedFile = null;
+      document.getElementById("fileNameDisplay").innerText = "";
+      return;
+    }
+    selectedFile = f;
+    document.getElementById("fileNameDisplay").innerText = "Seçilen Görsel: " + selectedFile.name;
   };
 
   document.getElementById("btnSendChat").onclick = async () => {
@@ -331,13 +388,13 @@
     } catch(err) {
       alert("İşlem Hatası: " + err.message);
     } finally {
-      btn.disabled = false; btn.innerText = "GÖNDER";
+      btn.disabled = false; btn.innerText = editingMessageId ? "GÜNCELLE" : "GÖNDER";
     }
   };
 
   function listenChatMessages() {
     const q = query(collection(db, "chat_messages"), orderBy("date", "asc"), limit(50));
-    onSnapshot(q, (snap) => {
+    return onSnapshot(q, (snap) => {
       const box = document.getElementById("chatBox");
       box.innerHTML = "";
       const mySicil = currentUserSicil();
@@ -345,52 +402,63 @@
       snap.forEach(d => {
         const m = d.data();
         const msgId = d.id;
-        const isSelf = m.sender === mySicil || masterLogin;
+        chatTextCache[msgId] = m.text || ""; // düzenleme için ham metni sakla (HTML'e hiç basılmıyor)
+        const isSelf = m.sender === mySicil;
         const timeStr = m.date ? m.date.toDate().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'}) : "";
         
+        const item = document.createElement("div");
+        item.className = "chat-item" + (isSelf ? " self" : "") + (m.isDeleted ? " deleted-msg" : "");
+
         if (m.isDeleted) {
-          box.innerHTML += `
-            <div class="chat-item ${isSelf ? 'self' : ''} deleted-msg">
-              <div class="chat-header"><span>👤 ${m.sender}</span><span>${timeStr}</span></div>
-              <div class="chat-body">🚫 <i>Bu mesaj silindi</i></div>
-            </div>
+          item.innerHTML = `
+            <div class="chat-header"><span>👤 ${esc(m.sender)}</span><span>${esc(timeStr)}</span></div>
+            <div class="chat-body">🚫 <i>Bu mesaj silindi</i></div>
           `;
+          box.appendChild(item);
           return;
         }
 
-        let imgHTML = m.mediaUrl ? `<a href="${m.mediaUrl}" target="_blank"><img src="${m.mediaUrl}" class="chat-img" /></a>` : "";
+        let imgHTML = m.mediaUrl ? `<a href="${esc(m.mediaUrl)}" target="_blank" rel="noopener"><img src="${esc(m.mediaUrl)}" class="chat-img" /></a>` : "";
         let editedTag = m.isEdited ? `<span style="font-size:10px; color:#888; font-style:italic;"> (düzenlendi)</span>` : "";
 
         let actionsHTML = "";
         if (isSelf) {
           actionsHTML = `
             <div class="chat-actions">
-              <button class="chat-action-btn" onclick="startEditMessage('${msgId}', \`${m.text ? m.text.replace(/`/g, '\\`') : ''}\`)">✏️ Düzenle</button>
-              <button class="chat-action-btn" onclick="softDeleteMessage('${msgId}')">🗑️ Sil</button>
+              <button class="chat-action-btn" data-action="edit" data-id="${esc(msgId)}">✏️ Düzenle</button>
+              <button class="chat-action-btn" data-action="delete" data-id="${esc(msgId)}">🗑️ Sil</button>
             </div>
           `;
         }
 
-        box.innerHTML += `
-          <div class="chat-item ${isSelf ? 'self' : ''}">
-            <div class="chat-header"><span>👤 ${m.sender}</span><span>${timeStr}${editedTag}</span></div>
-            ${m.text ? `<div class="chat-body">${m.text}</div>` : ''}
-            ${imgHTML}
-            ${actionsHTML}
-          </div>
+        item.innerHTML = `
+          <div class="chat-header"><span>👤 ${esc(m.sender)}</span><span>${esc(timeStr)}${editedTag}</span></div>
+          ${m.text ? `<div class="chat-body">${esc(m.text)}</div>` : ''}
+          ${imgHTML}
+          ${actionsHTML}
         `;
+        box.appendChild(item);
       });
       box.scrollTop = box.scrollHeight;
     });
   }
 
-  window.startEditMessage = (id, text) => {
+  // Event delegation: onclick attribute'larına gömülü ham metin yerine data-id kullanılıyor (enjeksiyon riski yok)
+  document.getElementById("chatBox").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (btn.dataset.action === "edit") startEditMessage(id, chatTextCache[id] || "");
+    else if (btn.dataset.action === "delete") softDeleteMessage(id);
+  });
+
+  function startEditMessage(id, text) {
     editingMessageId = id;
     document.getElementById("chatMessage").value = text;
     document.getElementById("chatMessage").focus();
     document.getElementById("editCancelBar").style.display = "flex";
     document.getElementById("btnSendChat").innerText = "GÜNCELLE";
-  };
+  }
 
   document.getElementById("btnCancelEdit").onclick = resetEditMode;
 
@@ -401,7 +469,7 @@
     document.getElementById("btnSendChat").innerText = "GÖNDER";
   }
 
-  window.softDeleteMessage = async (id) => {
+  async function softDeleteMessage(id) {
     if (confirm("Bu mesajı silmek istediğinize emin misiniz?")) {
       try {
         await updateDoc(doc(db, "chat_messages", id), {
@@ -412,7 +480,7 @@
         alert("Silme hatası: " + err.message);
       }
     }
-  };
+  }
 
   function listenLast20() {
     const q = query(collection(db, "records"), orderBy("date", "desc"), limit(20));
@@ -420,19 +488,23 @@
       const b = document.getElementById("last20Table"); b.innerHTML = "";
       snap.forEach(d => {
         const r = d.data();
-        b.innerHTML += `<tr><td><b>${r.p}</b></td><td>${r.rt}</td><td>${r.mrt || "-"}</td><td>${r.mrts || "-"}</td><td>${r.u || "-"}</td><td>${r.date ? r.date.toDate().toLocaleTimeString('tr-TR') : ""}</td></tr>`;
+        b.innerHTML += `<tr><td><b>${esc(r.p)}</b></td><td>${esc(r.rt)}</td><td>${esc(r.mrt) || "-"}</td><td>${esc(r.mrts) || "-"}</td><td>${esc(r.u) || "-"}</td><td>${r.date ? esc(r.date.toDate().toLocaleTimeString('tr-TR')) : ""}</td></tr>`;
       });
     });
   }
 
-  async function selectProduct(name) {
+  // Ürün seçildiğinde önceki dinleyici kapatılır, aksi halde her seçimde yeni bir onSnapshot
+  // aboneliği açılır ve eski dinleyiciler asla temizlenmeyip veri tekrarına/performans sorununa yol açar.
+  function selectProduct(name) {
+    if (unsubHistory) { unsubHistory(); unsubHistory = null; }
+
     document.getElementById("historyTitle").innerText = name + " Geçmişi";
-    onSnapshot(query(collection(db, "records"), where("p", "==", name), orderBy("date", "desc")), (snap) => {
+    unsubHistory = onSnapshot(query(collection(db, "records"), where("p", "==", name), orderBy("date", "desc")), (snap) => {
       const tbody = document.getElementById("historyTable"); tbody.innerHTML = ""; 
       let maxMRT = 0; let maxMRTS = 0;
       snap.forEach(d => {
         const r = d.data();
-        tbody.innerHTML += `<tr><td>${r.rt}</td><td>${r.mrt || "-"}</td><td>${r.mrts || "-"}</td><td>${r.u || "-"}</td><td>${r.date ? r.date.toDate().toLocaleString('tr-TR') : ""}</td></tr>`;
+        tbody.innerHTML += `<tr><td>${esc(r.rt)}</td><td>${esc(r.mrt) || "-"}</td><td>${esc(r.mrts) || "-"}</td><td>${esc(r.u) || "-"}</td><td>${r.date ? esc(r.date.toDate().toLocaleString('tr-TR')) : ""}</td></tr>`;
         if(r.mrt && parseInt(r.mrt) > maxMRT) maxMRT = parseInt(r.mrt);
         if(r.mrts && parseInt(r.mrts) > maxMRTS) maxMRTS = parseInt(r.mrts);
       });
@@ -449,6 +521,8 @@
 
     if(!p || !rt) return alert("Ürün Adı ve RT zorunludur!");
 
+    const btn = document.getElementById("btnKaydet");
+    btn.disabled = true;
     try {
       if(!allProducts.includes(p)) await addDoc(collection(db, "Ürünler"), {name:p});
       
@@ -467,21 +541,38 @@
       alert("Kaydedildi!");
     } catch(err) {
       alert("Kayıt sırasında hata oluştu: " + err.message);
+    } finally {
+      btn.disabled = false;
     }
   };
 
   function listenRedData() {
     onSnapshot(collection(db, "red_pallets"), (snap) => {
       const b = document.getElementById("redBodyBekleyen"); b.innerHTML = "";
-      snap.docs.forEach(d => { if(d.data().durum === "BEKLIYOR") b.innerHTML += `<tr><td>${d.data().fabrika}</td><td>${d.data().urun}</td><td>${d.data().fis}</td><td><button style="background:var(--w); padding:5px" onclick="resolvePallet('red_pallets','${d.id}')">AKTAR</button></td></tr>`; });
+      snap.docs.forEach(d => {
+        const r = d.data();
+        if(r.durum === "BEKLIYOR") b.innerHTML += `<tr><td>${esc(r.fabrika)}</td><td>${esc(r.urun)}</td><td>${esc(r.fis)}</td><td><button style="background:var(--w); padding:5px" data-coll="red_pallets" data-id="${esc(d.id)}">AKTAR</button></td></tr>`;
+      });
     });
   }
 
   function listenDefData() {
     onSnapshot(collection(db, "deformasyon"), (snap) => {
       const b = document.getElementById("defBodyBekleyen"); b.innerHTML = "";
-      snap.docs.forEach(d => { if(d.data().durum === "BEKLIYOR") b.innerHTML += `<tr><td>${d.data().fabrika}</td><td>${d.data().urun}</td><td>${d.data().fis}</td><td><button style="background:var(--w); padding:5px" onclick="resolvePallet('deformasyon','${d.id}')">ÇÖZ</button></td></tr>`; });
+      snap.docs.forEach(d => {
+        const r = d.data();
+        if(r.durum === "BEKLIYOR") b.innerHTML += `<tr><td>${esc(r.fabrika)}</td><td>${esc(r.urun)}</td><td>${esc(r.fis)}</td><td><button style="background:var(--w); padding:5px" data-coll="deformasyon" data-id="${esc(d.id)}">ÇÖZ</button></td></tr>`;
+      });
     });
+  }
+
+  // Event delegation ile "AKTAR/ÇÖZ" butonları (inline onclick yerine)
+  document.getElementById("redBodyBekleyen").addEventListener("click", handleResolveClick);
+  document.getElementById("defBodyBekleyen").addEventListener("click", handleResolveClick);
+  function handleResolveClick(e) {
+    const btn = e.target.closest("button[data-coll]");
+    if (!btn) return;
+    resolvePallet(btn.dataset.coll, btn.dataset.id);
   }
 
   function listenArsivData() {
@@ -507,9 +598,13 @@
     const tipFiltre = document.getElementById("filterTip").value;
     const body = document.getElementById("arsivBodyMain");
     body.innerHTML = "";
-    rawArsivData.filter(item => item.type === tipFiltre && item.urun.toUpperCase().includes(urunFiltre) && (!tarihFiltre || (item.cozum_tarih && item.cozum_tarih.toDate().toISOString().split('T')[0] === tarihFiltre)))
-      .sort((a,b) => b.cozum_tarih - a.cozum_tarih).forEach(r => {
-        body.innerHTML += `<tr><td>${r.cozum_tarih ? r.cozum_tarih.toDate().toLocaleDateString('tr-TR') : "-"}</td><td>${r.urun}</td><td>${r.fis}</td><td>${r.akibet}</td></tr>`;
+    rawArsivData
+      .filter(item => item.type === tipFiltre && (item.urun || "").toUpperCase().includes(urunFiltre) &&
+        (!tarihFiltre || (item.cozum_tarih && item.cozum_tarih.toDate().toISOString().split('T')[0] === tarihFiltre)))
+      // Firestore Timestamp nesneleri doğrudan çıkarılamaz (NaN sonucu verir); toMillis() ile karşılaştırıyoruz
+      .sort((a,b) => (b.cozum_tarih?.toMillis() || 0) - (a.cozum_tarih?.toMillis() || 0))
+      .forEach(r => {
+        body.innerHTML += `<tr><td>${r.cozum_tarih ? esc(r.cozum_tarih.toDate().toLocaleDateString('tr-TR')) : "-"}</td><td>${esc(r.urun)}</td><td>${esc(r.fis)}</td><td>${esc(r.akibet)}</td></tr>`;
       });
   }
 
@@ -517,10 +612,10 @@
   document.getElementById("filterTarih").onchange = renderArsiv;
   document.getElementById("filterTip").onchange = renderArsiv;
 
-  window.resolvePallet = async (coll, id) => {
+  async function resolvePallet(coll, id) {
     let a = prompt("İşlem Notu (Akıbet):"); 
     if(a) await updateDoc(doc(db, coll, id), { durum: "TAMAMLANDI", akibet: toUpper(a), cozum_tarih: new Date() });
-  };
+  }
 
   window.showPage = (id, btn) => {
     document.querySelectorAll('.content-page').forEach(p => p.classList.remove('active'));
@@ -537,7 +632,7 @@
       if(matches.length > 0) {
         list.style.display="block";
         matches.forEach(m => {
-          const li = document.createElement("li"); li.textContent = m;
+          const li = document.createElement("li"); li.textContent = m; // textContent -> güvenli
           li.onmousedown = () => { input.value = m; list.style.display="none"; if(callback) callback(m); };
           list.appendChild(li);
         });
@@ -559,6 +654,8 @@
 
     if(!fabrika || !urun || !fis) return alert("Lütfen gerekli alanları (Fabrika, Ürün, Fiş No) doldurun!");
 
+    const btn = document.getElementById("btnRedKaydet");
+    btn.disabled = true;
     try {
       await addDoc(collection(db, "red_pallets"), { 
         fabrika, urun, fis, sorumlu, neden,
@@ -574,6 +671,8 @@
       alert("Red Kaydedildi"); 
     } catch(err) {
       alert("Hata: " + err.message);
+    } finally {
+      btn.disabled = false;
     }
   };
   
@@ -585,6 +684,8 @@
 
     if(!fabrika || !urun || !fis) return alert("Lütfen gerekli alanları (Fabrika, Ürün, Fiş No) doldurun!");
 
+    const btn = document.getElementById("btnDefKaydet");
+    btn.disabled = true;
     try {
       await addDoc(collection(db, "deformasyon"), { 
         fabrika, urun, fis, tur,
@@ -599,17 +700,30 @@
       alert("Deformasyon Kaydedildi"); 
     } catch(err) {
       alert("Hata: " + err.message);
+    } finally {
+      btn.disabled = false;
     }
   };
 
   function loadAdminUserList() {
     onSnapshot(collection(db, "users"), (snap) => {
       const b = document.getElementById("adminUserTable"); b.innerHTML = "";
-      snap.forEach((d) => { b.innerHTML += `<tr><td>${d.data().sicil}</td><td>${d.data().role}</td><td><button style="background:var(--d); padding:5px" onclick="deleteUser('${d.id}')">SİL</button></td></tr>`; });
+      snap.forEach((d) => {
+        const u = d.data();
+        b.innerHTML += `<tr><td>${esc(u.sicil)}</td><td>${esc(u.role)}</td><td><button style="background:var(--d); padding:5px" data-userid="${esc(d.id)}">SİL</button></td></tr>`;
+      });
     });
   }
-  
-  window.deleteUser = async (id) => { if(confirm("Bu personeli silmek istediğinizden emin misiniz?")) await deleteDoc(doc(db, "users", id)); };
+
+  document.getElementById("adminUserTable").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-userid]");
+    if (!btn) return;
+    deleteUser(btn.dataset.userid);
+  });
+
+  async function deleteUser(id) {
+    if(confirm("Bu personeli silmek istediğinizden emin misiniz?")) await deleteDoc(doc(db, "users", id));
+  }
   
   document.getElementById("btnCreateUser").onclick = async () => {
     const s = document.getElementById("newUserSicil").value.trim();
@@ -617,24 +731,121 @@
     const r = document.getElementById("newUserRole").value;
 
     if (!s || !p) return alert("Sicil No ve Şifre zorunludur!");
+    if (p.length < 6) return alert("Şifre en az 6 karakter olmalıdır!");
 
+    const btn = document.getElementById("btnCreateUser");
+    btn.disabled = true;
     try {
       // Admin oturumunu koparmamak için secondaryAuth kullanıyoruz
       const res = await createUserWithEmailAndPassword(secondaryAuth, s + "@skks.com", p);
       await setDoc(doc(db, "users", res.user.uid), { sicil: s, role: r });
-      
+      await signOut(secondaryAuth); // ikincil oturumu temizle
+
       document.getElementById("newUserSicil").value = "";
       document.getElementById("newUserPass").value = "";
       alert("Yeni Personel Başarıyla Eklendi");
     } catch(err) {
       alert("Personel Ekleme Hatası: " + err.message);
+    } finally {
+      btn.disabled = false;
     }
   };
 
   document.getElementById("btnLogout").onclick = () => { 
-    masterLogin = false; 
+    if (unsubHistory) { unsubHistory(); unsubHistory = null; }
+    if (unsubChat) { unsubChat(); unsubChat = null; }
     signOut(auth).then(() => location.reload()); 
   };
+
+  // ===================== GİZLİ ERİŞİM MODÜLÜ =====================
+  // Tetikleyici: ana logoya 3 saniye içinde art arda 5 kez dokunmak.
+  // PIN, kodun içinde YAZILI DEĞİL — Firestore'daki "app_config/gizli_erisim"
+  // belgesinde SHA-256 hash olarak tutuluyor ve karşılaştırma bu hash üzerinden yapılıyor.
+  // İlk kurulum: Firebase Console > Firestore'da "app_config" koleksiyonu altında
+  // "gizli_erisim" adlı bir belge oluşturup içine { pinHash: "<SHA-256 hex>" } alanı ekleyin.
+  // Hash'i tarayıcı konsolunda şu şekilde üretebilirsiniz:
+  //   crypto.subtle.digest("SHA-256", new TextEncoder().encode("SEÇTİĞİNİZ_PIN"))
+  //     .then(b => console.log(Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("")))
+  function setupSecretAccess() {
+    const trigger = document.getElementById("mainLogoTrigger");
+    if (!trigger || trigger.dataset.bound) return; // startApp birden fazla çağrılırsa tekrar bağlamayı önle
+    trigger.dataset.bound = "1";
+    trigger.addEventListener("click", () => {
+      secretTapCount++;
+      if (secretTapTimer) clearTimeout(secretTapTimer);
+      secretTapTimer = setTimeout(() => { secretTapCount = 0; }, 3000);
+      if (secretTapCount >= 5) {
+        secretTapCount = 0;
+        clearTimeout(secretTapTimer);
+        openPinModal();
+      }
+    });
+  }
+
+  function openPinModal() {
+    document.getElementById("secretPinInput").value = "";
+    document.getElementById("pinError").innerText = "";
+    document.getElementById("pinModal").style.display = "flex";
+    document.getElementById("secretPinInput").focus();
+  }
+
+  function closePinModal() {
+    document.getElementById("pinModal").style.display = "none";
+  }
+
+  document.getElementById("btnPinCancel").onclick = closePinModal;
+  document.getElementById("pinModal").addEventListener("click", (e) => {
+    if (e.target.id === "pinModal") closePinModal(); // arka plana tıklayınca da kapansın
+  });
+
+  async function sha256Hex(text) {
+    const enc = new TextEncoder().encode(text);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", enc);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  document.getElementById("btnPinConfirm").onclick = async () => {
+    const pin = document.getElementById("secretPinInput").value.trim();
+    const errEl = document.getElementById("pinError");
+    errEl.innerText = "";
+    if (!pin) { errEl.innerText = "Kod girin"; return; }
+
+    const btn = document.getElementById("btnPinConfirm");
+    btn.disabled = true;
+    try {
+      const cfgSnap = await getDoc(doc(db, "app_config", "gizli_erisim"));
+      const storedHash = cfgSnap.exists() ? cfgSnap.data().pinHash : null;
+      const enteredHash = await sha256Hex(pin);
+      if (storedHash && enteredHash === storedHash) {
+        closePinModal();
+        unlockSecretChat();
+      } else {
+        errEl.innerText = "Yanlış kod";
+      }
+    } catch (err) {
+      errEl.innerText = "Yanlış kod";
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  document.getElementById("secretPinInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("btnPinConfirm").click();
+  });
+
+  function unlockSecretChat() {
+    document.getElementById("secretChatOverlay").style.display = "block";
+    if (!unsubChat) unsubChat = listenChatMessages();
+  }
+
+  function lockSecretChat() {
+    if (unsubChat) { unsubChat(); unsubChat = null; }
+    document.getElementById("chatBox").innerHTML = "";
+    resetEditMode();
+    document.getElementById("secretChatOverlay").style.display = "none";
+  }
+
+  document.getElementById("btnLockChat").onclick = lockSecretChat;
 </script>
 </body>
 </html>
