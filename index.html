@@ -239,6 +239,10 @@
   const auth = getAuth(app);
   const storage = getStorage(app);
 
+  // Admin personel eklerken kendi oturumunun kapanmaması için İkincil App/Auth Örneği
+  const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
+  const secondaryAuth = getAuth(secondaryApp);
+
   let allProducts = [];
   let masterLogin = false;
   let rawArsivData = [];
@@ -262,7 +266,7 @@
       document.getElementById("adminTab").style.display = "none";
     }
 
-    onSnapshot(collection(db, "Ürünler"), (sn) => { allProducts = sn.docs.map(d => d.data().name.toUpperCase()); });
+    onSnapshot(collection(db, "Ürünler"), (sn) => { allProducts = sn.docs.map(d => d.data().name ? d.data().name.toUpperCase() : ""); });
     listenRedData(); listenDefData(); listenArsivData(); listenLast20(); listenChatMessages();
   }
 
@@ -398,7 +402,7 @@
   }
 
   window.softDeleteMessage = async (id) => {
-    if (confirm("Bu mesajı silmek istediğinize emin misiniz? (Mesaj uygulamadan kaldırılır fakat veritabanında saklanır)")) {
+    if (confirm("Bu mesajı silmek istediğinize emin misiniz?")) {
       try {
         await updateDoc(doc(db, "chat_messages", id), {
           isDeleted: true,
@@ -438,24 +442,32 @@
   }
 
   document.getElementById("btnKaydet").onclick = async () => {
-    const p = toUpper(document.getElementById("pSearch").value), rt = document.getElementById("rtVal").value;
-    const mrt = document.getElementById("mrtVal").value;
-    const mrts = document.getElementById("mrtsVal").value;
+    const p = toUpper(document.getElementById("pSearch").value.trim()); 
+    const rt = document.getElementById("rtVal").value.trim();
+    const mrt = document.getElementById("mrtVal").value.trim();
+    const mrts = document.getElementById("mrtsVal").value.trim();
 
     if(!p || !rt) return alert("Ürün Adı ve RT zorunludur!");
-    if(!allProducts.includes(p)) await addDoc(collection(db, "Ürünler"), {name:p});
-    
-    await addDoc(collection(db, "records"), { 
-        p, rt, 
-        mrt: mrt || "", 
-        mrts: mrts || "", 
-        u: currentUserSicil(), 
-        date: new Date() 
-    });
-    
-    document.getElementById("rtVal").value = "";
-    document.getElementById("mrtsVal").value = ""; 
-    alert("Kaydedildi!");
+
+    try {
+      if(!allProducts.includes(p)) await addDoc(collection(db, "Ürünler"), {name:p});
+      
+      await addDoc(collection(db, "records"), { 
+          p, rt, 
+          mrt: mrt || "", 
+          mrts: mrts || "", 
+          u: currentUserSicil(), 
+          date: new Date() 
+      });
+      
+      document.getElementById("pSearch").value = "";
+      document.getElementById("rtVal").value = "";
+      document.getElementById("mrtVal").value = "";
+      document.getElementById("mrtsVal").value = "";
+      alert("Kaydedildi!");
+    } catch(err) {
+      alert("Kayıt sırasında hata oluştu: " + err.message);
+    }
   };
 
   function listenRedData() {
@@ -535,31 +547,59 @@
   }
 
   setupSearch("pSearch", "productList", (m) => selectProduct(m));
-  setupSearch("redProdSearch", "redProdList"); setupSearch("defProdSearch", "defProdList");
+  setupSearch("redProdSearch", "redProdList"); 
+  setupSearch("defProdSearch", "defProdList");
 
   document.getElementById("btnRedKaydet").onclick = async () => { 
-    await addDoc(collection(db, "red_pallets"), { 
-      fabrika: document.getElementById("redFabrika").value, 
-      urun: toUpper(document.getElementById("redProdSearch").value), 
-      fis: toUpper(document.getElementById("redFisNo").value), 
-      sorumlu: toUpper(document.getElementById("redSorumlu").value), 
-      neden: toUpper(document.getElementById("redNeden").value), 
-      durum: "BEKLIYOR", 
-      tarih: new Date() 
-    }); 
-    alert("Red Kaydedildi"); 
+    const fabrika = document.getElementById("redFabrika").value;
+    const urun = toUpper(document.getElementById("redProdSearch").value.trim());
+    const fis = toUpper(document.getElementById("redFisNo").value.trim());
+    const sorumlu = toUpper(document.getElementById("redSorumlu").value.trim());
+    const neden = toUpper(document.getElementById("redNeden").value.trim());
+
+    if(!fabrika || !urun || !fis) return alert("Lütfen gerekli alanları (Fabrika, Ürün, Fiş No) doldurun!");
+
+    try {
+      await addDoc(collection(db, "red_pallets"), { 
+        fabrika, urun, fis, sorumlu, neden,
+        durum: "BEKLIYOR", 
+        tarih: new Date() 
+      }); 
+      
+      document.getElementById("redFabrika").value = "";
+      document.getElementById("redProdSearch").value = "";
+      document.getElementById("redFisNo").value = "";
+      document.getElementById("redSorumlu").value = "";
+      document.getElementById("redNeden").value = "";
+      alert("Red Kaydedildi"); 
+    } catch(err) {
+      alert("Hata: " + err.message);
+    }
   };
   
   document.getElementById("btnDefKaydet").onclick = async () => { 
-    await addDoc(collection(db, "deformasyon"), { 
-      urun: toUpper(document.getElementById("defProdSearch").value), 
-      fis: toUpper(document.getElementById("defFisNo").value), 
-      tur: toUpper(document.getElementById("defTur").value), 
-      fabrika: document.getElementById("defFabrika").value, 
-      durum: "BEKLIYOR", 
-      tarih: new Date() 
-    }); 
-    alert("Deformasyon Kaydedildi"); 
+    const fabrika = document.getElementById("defFabrika").value;
+    const urun = toUpper(document.getElementById("defProdSearch").value.trim());
+    const fis = toUpper(document.getElementById("defFisNo").value.trim());
+    const tur = toUpper(document.getElementById("defTur").value.trim());
+
+    if(!fabrika || !urun || !fis) return alert("Lütfen gerekli alanları (Fabrika, Ürün, Fiş No) doldurun!");
+
+    try {
+      await addDoc(collection(db, "deformasyon"), { 
+        fabrika, urun, fis, tur,
+        durum: "BEKLIYOR", 
+        tarih: new Date() 
+      }); 
+
+      document.getElementById("defFabrika").value = "";
+      document.getElementById("defProdSearch").value = "";
+      document.getElementById("defFisNo").value = "";
+      document.getElementById("defTur").value = "";
+      alert("Deformasyon Kaydedildi"); 
+    } catch(err) {
+      alert("Hata: " + err.message);
+    }
   };
 
   function loadAdminUserList() {
@@ -568,14 +608,33 @@
       snap.forEach((d) => { b.innerHTML += `<tr><td>${d.data().sicil}</td><td>${d.data().role}</td><td><button style="background:var(--d); padding:5px" onclick="deleteUser('${d.id}')">SİL</button></td></tr>`; });
     });
   }
-  window.deleteUser = async (id) => { if(confirm("Sil?")) await deleteDoc(doc(db, "users", id)); };
+  
+  window.deleteUser = async (id) => { if(confirm("Bu personeli silmek istediğinizden emin misiniz?")) await deleteDoc(doc(db, "users", id)); };
+  
   document.getElementById("btnCreateUser").onclick = async () => {
-    const s = document.getElementById("newUserSicil").value, p = document.getElementById("newUserPass").value, r = document.getElementById("newUserRole").value;
-    const res = await createUserWithEmailAndPassword(auth, s + "@skks.com", p);
-    await setDoc(doc(db, "users", res.user.uid), { sicil: s, role: r }); alert("Eklendi");
+    const s = document.getElementById("newUserSicil").value.trim();
+    const p = document.getElementById("newUserPass").value.trim();
+    const r = document.getElementById("newUserRole").value;
+
+    if (!s || !p) return alert("Sicil No ve Şifre zorunludur!");
+
+    try {
+      // Admin oturumunu koparmamak için secondaryAuth kullanıyoruz
+      const res = await createUserWithEmailAndPassword(secondaryAuth, s + "@skks.com", p);
+      await setDoc(doc(db, "users", res.user.uid), { sicil: s, role: r });
+      
+      document.getElementById("newUserSicil").value = "";
+      document.getElementById("newUserPass").value = "";
+      alert("Yeni Personel Başarıyla Eklendi");
+    } catch(err) {
+      alert("Personel Ekleme Hatası: " + err.message);
+    }
   };
 
-  document.getElementById("btnLogout").onclick = () => { masterLogin = false; signOut(auth).then(() => location.reload()); };
+  document.getElementById("btnLogout").onclick = () => { 
+    masterLogin = false; 
+    signOut(auth).then(() => location.reload()); 
+  };
 </script>
 </body>
 </html>
