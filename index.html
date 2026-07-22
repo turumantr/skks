@@ -242,7 +242,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getFirestore, collection, addDoc, doc, getDoc, onSnapshot, query, where, orderBy, limit, setDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, doc, getDoc, getDocs, onSnapshot, query, where, orderBy, limit, setDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
   import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
@@ -272,6 +272,7 @@
   let editingMessageId = null;
   let unsubHistory = null;        // ürün geçmişi dinleyicisi - sızıntıyı önlemek için tutuluyor
   let unsubChat = null;           // gizli mesaj dinleyicisi - kilitlenince kapatılır
+  let currentChatCollection = null; // hangi PIN girildiyse ona karşılık gelen Firestore koleksiyonu
   let secretTapCount = 0;
   let secretTapTimer = null;
   const chatTextCache = {};       // msgId -> ham metin (düzenleme için, HTML enjeksiyonu olmadan)
@@ -355,9 +356,11 @@
 
     btn.disabled = true; btn.innerText = editingMessageId ? "Güncelleniyor..." : "Gönderiliyor...";
 
+    if (!currentChatCollection) { alert("Oturum süresi doldu, lütfen tekrar kilidi açın."); btn.disabled = false; return; }
+
     try {
       if (editingMessageId) {
-        await updateDoc(doc(db, "chat_messages", editingMessageId), {
+        await updateDoc(doc(db, currentChatCollection, editingMessageId), {
           text: txt,
           isEdited: true,
           updatedAt: new Date()
@@ -366,12 +369,12 @@
       } else {
         let imgUrl = "";
         if(selectedFile) {
-          const fileRef = ref(storage, `chat_images/${Date.now()}_${selectedFile.name}`);
+          const fileRef = ref(storage, `chat_images/${currentChatCollection}/${Date.now()}_${selectedFile.name}`);
           await uploadBytes(fileRef, selectedFile);
           imgUrl = await getDownloadURL(fileRef);
         }
 
-        await addDoc(collection(db, "chat_messages"), {
+        await addDoc(collection(db, currentChatCollection), {
           sender: currentUserSicil(),
           text: txt,
           mediaUrl: imgUrl,
@@ -392,8 +395,8 @@
     }
   };
 
-  function listenChatMessages() {
-    const q = query(collection(db, "chat_messages"), orderBy("date", "asc"), limit(50));
+  function listenChatMessages(collName) {
+    const q = query(collection(db, collName), orderBy("date", "asc"), limit(50));
     return onSnapshot(q, (snap) => {
       const box = document.getElementById("chatBox");
       box.innerHTML = "";
@@ -472,7 +475,7 @@
   async function softDeleteMessage(id) {
     if (confirm("Bu mesajı silmek istediğinize emin misiniz?")) {
       try {
-        await updateDoc(doc(db, "chat_messages", id), {
+        await updateDoc(doc(db, currentChatCollection, id), {
           isDeleted: true,
           deletedAt: new Date()
         });
@@ -759,13 +762,12 @@
 
   // ===================== GİZLİ ERİŞİM MODÜLÜ =====================
   // Tetikleyici: ana logoya 3 saniye içinde art arda 5 kez dokunmak.
-  // PIN, kodun içinde YAZILI DEĞİL — Firestore'daki "app_config/gizli_erisim"
-  // belgesinde SHA-256 hash olarak tutuluyor ve karşılaştırma bu hash üzerinden yapılıyor.
-  // İlk kurulum: Firebase Console > Firestore'da "app_config" koleksiyonu altında
-  // "gizli_erisim" adlı bir belge oluşturup içine { pinHash: "<SHA-256 hex>" } alanı ekleyin.
-  // Hash'i tarayıcı konsolunda şu şekilde üretebilirsiniz:
-  //   crypto.subtle.digest("SHA-256", new TextEncoder().encode("SEÇTİĞİNİZ_PIN"))
-  //     .then(b => console.log(Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("")))
+  // Birden fazla "bölme" desteklenir: app_config koleksiyonu altında istediğin kadar
+  // belge oluşturabilirsin, her biri kendi pinHash + collection alanına sahiptir.
+  // Girilen PIN'in hash'i, bu belgelerin tamamıyla karşılaştırılır; eşleşen belgenin
+  // "collection" alanında yazan Firestore koleksiyonu açılır. Böylece farklı PIN'ler
+  // birbirinden tamamen bağımsız, birbirinin varlığından haberdar olmayan mesaj
+  // gruplarını açar. Kurulum adımları sohbette ayrıca anlatıldı.
   function setupSecretAccess() {
     const trigger = document.getElementById("mainLogoTrigger");
     if (!trigger || trigger.dataset.bound) return; // startApp birden fazla çağrılırsa tekrar bağlamayı önle
@@ -813,12 +815,21 @@
     const btn = document.getElementById("btnPinConfirm");
     btn.disabled = true;
     try {
-      const cfgSnap = await getDoc(doc(db, "app_config", "gizli_erisim"));
-      const storedHash = cfgSnap.exists() ? cfgSnap.data().pinHash : null;
       const enteredHash = await sha256Hex(pin);
-      if (storedHash && enteredHash === storedHash) {
+      // app_config koleksiyonundaki TÜM belgeler taranır; her belge kendi pinHash + collection
+      // alanına sahiptir. Eşleşen ilk belge bulunduğunda o belgenin işaret ettiği koleksiyon açılır.
+      const cfgSnap = await getDocs(collection(db, "app_config"));
+      let matchedCollection = null;
+      cfgSnap.forEach((d) => {
+        const data = d.data();
+        if (!matchedCollection && data.pinHash === enteredHash) {
+          matchedCollection = data.collection || "chat_messages";
+        }
+      });
+
+      if (matchedCollection) {
         closePinModal();
-        unlockSecretChat();
+        unlockSecretChat(matchedCollection);
       } else {
         errEl.innerText = "Yanlış kod";
       }
@@ -833,13 +844,16 @@
     if (e.key === "Enter") document.getElementById("btnPinConfirm").click();
   });
 
-  function unlockSecretChat() {
+  function unlockSecretChat(collName) {
+    currentChatCollection = collName;
     document.getElementById("secretChatOverlay").style.display = "block";
-    if (!unsubChat) unsubChat = listenChatMessages();
+    if (unsubChat) unsubChat(); // farklı bir bölmeden geçiş yapılıyorsa önceki dinleyiciyi kapat
+    unsubChat = listenChatMessages(collName);
   }
 
   function lockSecretChat() {
     if (unsubChat) { unsubChat(); unsubChat = null; }
+    currentChatCollection = null;
     document.getElementById("chatBox").innerHTML = "";
     resetEditMode();
     document.getElementById("secretChatOverlay").style.display = "none";
