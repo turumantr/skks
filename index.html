@@ -45,11 +45,16 @@
     .filter-bar { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 15px; background: #eee; padding: 15px; border-radius: 10px; }
     
     /* Chat Stilleri */
-    .chat-item { display: flex; flex-direction: column; background: #fff; padding: 10px 14px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); max-width: 80%; border-left: 4px solid var(--cer); }
+    .chat-item { display: flex; flex-direction: column; background: #fff; padding: 10px 14px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); max-width: 80%; border-left: 4px solid var(--cer); position: relative; }
     .chat-item.self { align-self: flex-end; background: #e8f8f5; border-left: none; border-right: 4px solid var(--s); }
+    .chat-item.deleted-msg { background: #f8d7da; border-color: #f5c6cb; color: #721c24; font-style: italic; }
     .chat-header { font-size: 11px; font-weight: bold; color: var(--p); margin-bottom: 4px; display: flex; justify-content: space-between; gap: 15px; }
     .chat-body { font-size: 13px; color: #333; word-break: break-word; }
     .chat-img { max-width: 220px; max-height: 220px; border-radius: 8px; margin-top: 8px; cursor: pointer; border: 1px solid #ddd; }
+    
+    .chat-actions { display: flex; gap: 8px; margin-top: 6px; font-size: 11px; justify-content: flex-end; }
+    .chat-action-btn { background: none; border: none; padding: 2px 5px; color: #7f8c8d; cursor: pointer; font-size: 11px; font-weight: normal; }
+    .chat-action-btn:hover { text-decoration: underline; color: var(--p); }
 
     #authPage { width: 100%; max-width: 380px; margin-top: 10vh; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -158,6 +163,13 @@
       <div id="chatBox" style="height: 380px; overflow-y: auto; border: 1px solid #eee; padding: 15px; border-radius: 10px; margin-bottom: 12px; background: #fafafa; display: flex; flex-direction: column;">
         <!-- Mesajlar Buraya Akacak -->
       </div>
+      
+      <!-- Düzenleme İptal Barı -->
+      <div id="editCancelBar" style="display: none; background: #e1f5fe; padding: 6px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 6px; justify-content: space-between; align-items: center;">
+        <span>✏️ <b>Mesaj düzenleniyor...</b></span>
+        <button id="btnCancelEdit" style="background: none; color: var(--d); padding: 0; font-size: 12px; border: none; cursor: pointer;">İptal Et</button>
+      </div>
+
       <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
         <input type="text" id="chatMessage" placeholder="Mesajınızı veya notunuzu yazın..." style="margin:0; flex:1; min-width: 200px;">
         <label style="background: var(--p); color: white; padding: 12px 15px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: bold;">
@@ -227,6 +239,7 @@
   let masterLogin = false;
   let rawArsivData = [];
   let selectedFile = null;
+  let editingMessageId = null; // Düzenlenen mesaj ID'si
 
   const toUpper = (val) => val ? val.toString().toLocaleUpperCase('tr-TR') : "";
   const currentUserSicil = () => masterLogin ? "MASTER" : (auth.currentUser ? auth.currentUser.email.split("@")[0] : "Anonim");
@@ -265,29 +278,42 @@
     const btn = document.getElementById("btnSendChat");
     if(!txt && !selectedFile) return alert("Lütfen bir mesaj yazın veya fotoğraf seçin!");
 
-    btn.disabled = true; btn.innerText = "Gönderiliyor...";
-    let imgUrl = "";
+    btn.disabled = true; btn.innerText = editingMessageId ? "Güncelleniyor..." : "Gönderiliyor...";
 
     try {
-      if(selectedFile) {
-        const fileRef = ref(storage, `chat_images/${Date.now()}_${selectedFile.name}`);
-        await uploadBytes(fileRef, selectedFile);
-        imgUrl = await getDownloadURL(fileRef);
+      if (editingMessageId) {
+        // DÜZENLEME MODU (Sadece metin güncellenir)
+        await updateDoc(doc(db, "chat_messages", editingMessageId), {
+          text: txt,
+          isEdited: true,
+          updatedAt: new Date()
+        });
+        resetEditMode();
+      } else {
+        // YENİ MESAJ MODU
+        let imgUrl = "";
+        if(selectedFile) {
+          const fileRef = ref(storage, `chat_images/${Date.now()}_${selectedFile.name}`);
+          await uploadBytes(fileRef, selectedFile);
+          imgUrl = await getDownloadURL(fileRef);
+        }
+
+        await addDoc(collection(db, "chat_messages"), {
+          sender: currentUserSicil(),
+          text: txt,
+          mediaUrl: imgUrl,
+          date: new Date(),
+          isDeleted: false,
+          isEdited: false
+        });
+
+        document.getElementById("chatMessage").value = "";
+        document.getElementById("chatFile").value = "";
+        document.getElementById("fileNameDisplay").innerText = "";
+        selectedFile = null;
       }
-
-      await addDoc(collection(db, "chat_messages"), {
-        sender: currentUserSicil(),
-        text: txt,
-        mediaUrl: imgUrl,
-        date: new Date()
-      });
-
-      document.getElementById("chatMessage").value = "";
-      document.getElementById("chatFile").value = "";
-      document.getElementById("fileNameDisplay").innerText = "";
-      selectedFile = null;
     } catch(err) {
-      alert("Gönderim Hatası: " + err.message);
+      alert("İşlem Hatası: " + err.message);
     } finally {
       btn.disabled = false; btn.innerText = "GÖNDER";
     }
@@ -302,22 +328,80 @@
 
       snap.forEach(d => {
         const m = d.data();
-        const isSelf = m.sender === mySicil;
+        const msgId = d.id;
+        const isSelf = m.sender === mySicil || masterLogin;
         const timeStr = m.date ? m.date.toDate().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'}) : "";
         
+        // SİLİNMİŞ MESAJ GÖRÜNÜMÜ (Soft Delete)
+        if (m.isDeleted) {
+          box.innerHTML += `
+            <div class="chat-item ${isSelf ? 'self' : ''} deleted-msg">
+              <div class="chat-header"><span>👤 ${m.sender}</span><span>${timeStr}</span></div>
+              <div class="chat-body">🚫 <i>Bu mesaj silindi</i></div>
+            </div>
+          `;
+          return;
+        }
+
         let imgHTML = m.mediaUrl ? `<a href="${m.mediaUrl}" target="_blank"><img src="${m.mediaUrl}" class="chat-img" /></a>` : "";
+        let editedTag = m.isEdited ? `<span style="font-size:10px; color:#888; font-style:italic;"> (düzenlendi)</span>` : "";
+
+        // Aksiyon Butonları (Düzenle / Sil)
+        let actionsHTML = "";
+        if (isSelf) {
+          actionsHTML = `
+            <div class="chat-actions">
+              <button class="chat-action-btn" onclick="startEditMessage('${msgId}', \`${m.text.replace(/`/g, '\\`')}\`)">✏️ Düzenle</button>
+              <button class="chat-action-btn" onclick="softDeleteMessage('${msgId}')">🗑️ Sil</button>
+            </div>
+          `;
+        }
 
         box.innerHTML += `
           <div class="chat-item ${isSelf ? 'self' : ''}">
-            <div class="chat-header"><span>👤 ${m.sender}</span><span>${timeStr}</span></div>
+            <div class="chat-header"><span>👤 ${m.sender}</span><span>${timeStr}${editedTag}</span></div>
             ${m.text ? `<div class="chat-body">${m.text}</div>` : ''}
             ${imgHTML}
+            ${actionsHTML}
           </div>
         `;
       });
       box.scrollTop = box.scrollHeight;
     });
   }
+
+  // Mesaj Düzenlemeyi Başlat
+  window.startEditMessage = (id, text) => {
+    editingMessageId = id;
+    document.getElementById("chatMessage").value = text;
+    document.getElementById("chatMessage").focus();
+    document.getElementById("editCancelBar").style.display = "flex";
+    document.getElementById("btnSendChat").innerText = "GÜNCELLE";
+  };
+
+  // Düzenleme Modundan Çık
+  document.getElementById("btnCancelEdit").onclick = resetEditMode;
+
+  function resetEditMode() {
+    editingMessageId = null;
+    document.getElementById("chatMessage").value = "";
+    document.getElementById("editCancelBar").style.display = "none";
+    document.getElementById("btnSendChat").innerText = "GÖNDER";
+  }
+
+  // Mesajı Uygulamadan Sil (Soft Delete)
+  window.softDeleteMessage = async (id) => {
+    if (confirm("Bu mesajı silmek istediğinize emin misiniz? (Mesaj uygulamadan kaldırılır fakat veritabanında saklanır)")) {
+      try {
+        await updateDoc(doc(db, "chat_messages", id), {
+          isDeleted: true,
+          deletedAt: new Date()
+        });
+      } catch (err) {
+        alert("Silme hatası: " + err.message);
+      }
+    }
+  };
 
   function listenLast20() {
     const q = query(collection(db, "records"), orderBy("date", "desc"), limit(20));
