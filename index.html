@@ -23,13 +23,12 @@
     .content-page { display: none; width: 100%; animation: fadeIn 0.3s; flex-direction: column; gap: 15px; }
     .content-page.active { display: flex; }
     
-    /* Girdi Alanları İçin Büyük Harf Zorunluluğu (Görsel) */
+    /* Girdi Alanları İçin Büyük Harf Zorunluluğu */
     input, select, textarea { 
       width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; 
       text-transform: uppercase; 
     }
-    /* Şifre ve Sicil gibi alanlarda görsel büyük harfi kapatıyoruz ki karmaşa olmasın */
-    #sifre, #sicilNo, #newUserPass { text-transform: none; }
+    #sifre, #sicilNo, #newUserPass, #chatMessage { text-transform: none; } /* Chat mesajları ve şifreler serbest */
 
     button { padding: 12px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; }
     
@@ -45,6 +44,13 @@
     
     .filter-bar { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 15px; background: #eee; padding: 15px; border-radius: 10px; }
     
+    /* Chat Stilleri */
+    .chat-item { display: flex; flex-direction: column; background: #fff; padding: 10px 14px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); max-width: 80%; border-left: 4px solid var(--cer); }
+    .chat-item.self { align-self: flex-end; background: #e8f8f5; border-left: none; border-right: 4px solid var(--s); }
+    .chat-header { font-size: 11px; font-weight: bold; color: var(--p); margin-bottom: 4px; display: flex; justify-content: space-between; gap: 15px; }
+    .chat-body { font-size: 13px; color: #333; word-break: break-word; }
+    .chat-img { max-width: 220px; max-height: 220px; border-radius: 8px; margin-top: 8px; cursor: pointer; border: 1px solid #ddd; }
+
     #authPage { width: 100%; max-width: 380px; margin-top: 10vh; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
   </style>
@@ -75,11 +81,13 @@
     <button class="tab-btn active" onclick="showPage('kayitPage', this)">📌 ÜRETİM</button>
     <button class="tab-btn" onclick="showPage('redPage', this)">🚨 RED TAKİBİ</button>
     <button class="tab-btn" onclick="showPage('defPage', this)">🟣 DEFORMASYON</button>
+    <button class="tab-btn" style="background: var(--cer); color: white;" onclick="showPage('chatPage', this)">💬 İLETİŞİM</button>
     <button class="tab-btn" style="background: var(--ars); color: white;" onclick="showPage('arsivPage', this)">📂 ARŞİV</button>
     <button id="adminTab" class="tab-btn" style="display:none" onclick="showPage('personelPage', this)">👥 PERSONEL</button>
     <button id="btnLogout" style="background:none; color:var(--d); margin-left:auto; border:none; cursor:pointer; font-weight:bold;">ÇIKIŞ</button>
   </div>
 
+  <!-- ÜRETİM SAYFASI -->
   <div id="kayitPage" class="content-page active">
     <div style="display: flex; gap: 20px; flex-wrap: wrap;">
       <div class="box" style="flex: 1; min-width: 320px;">
@@ -112,6 +120,7 @@
     </div>
   </div>
 
+  <!-- RED TAKİBİ -->
   <div id="redPage" class="content-page">
     <div class="box">
       <h3>🚨 Redli Palet Bildirimi</h3>
@@ -127,6 +136,7 @@
     <div class="box"><h4>Bekleyen Redli Paletler</h4><div class="table-container"><table><thead><tr><th>Fab.</th><th>Ürün</th><th>Fiş</th><th>İşlem</th></tr></thead><tbody id="redBodyBekleyen"></tbody></table></div></div>
   </div>
 
+  <!-- DEFORMASYON -->
   <div id="defPage" class="content-page">
     <div class="box">
       <h3>🟣 Deformasyon Girişi</h3>
@@ -141,6 +151,26 @@
     <div class="box"><h4>Bekleyen Deformasyonlar</h4><div class="table-container"><table><thead><tr><th>Fab.</th><th>Ürün</th><th>Fiş</th><th>İşlem</th></tr></thead><tbody id="defBodyBekleyen"></tbody></table></div></div>
   </div>
 
+  <!-- İLETİŞİM & CHAT MODÜLÜ -->
+  <div id="chatPage" class="content-page">
+    <div class="box" style="border-left: 6px solid var(--cer);">
+      <h3>💬 Vardiya & Personel İletişim</h3>
+      <div id="chatBox" style="height: 380px; overflow-y: auto; border: 1px solid #eee; padding: 15px; border-radius: 10px; margin-bottom: 12px; background: #fafafa; display: flex; flex-direction: column;">
+        <!-- Mesajlar Buraya Akacak -->
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <input type="text" id="chatMessage" placeholder="Mesajınızı veya notunuzu yazın..." style="margin:0; flex:1; min-width: 200px;">
+        <label style="background: var(--p); color: white; padding: 12px 15px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: bold;">
+          📷 FOTOĞRAF
+          <input type="file" id="chatFile" accept="image/*" style="display:none;">
+        </label>
+        <button id="btnSendChat" style="background: var(--s); margin:0; padding: 12px 20px;">GÖNDER</button>
+      </div>
+      <span id="fileNameDisplay" style="font-size: 11px; color: var(--s); margin-top: 5px; display: block; font-weight: bold;"></span>
+    </div>
+  </div>
+
+  <!-- ARŞİV -->
   <div id="arsivPage" class="content-page">
     <div class="box" style="border-left: 6px solid var(--ars);">
       <h3>📂 Kayıt Arşivi</h3>
@@ -158,6 +188,7 @@
     </div>
   </div>
 
+  <!-- PERSONEL -->
   <div id="personelPage" class="content-page">
     <div class="box">
       <h3>Personel Yönetimi</h3>
@@ -176,6 +207,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getFirestore, collection, addDoc, doc, getDoc, onSnapshot, query, where, orderBy, limit, setDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyB4ikTS6MwwIHbgjscyVTRSZatQM_PoL7Y",
@@ -189,20 +221,22 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const auth = getAuth(app);
+  const storage = getStorage(app);
 
   let allProducts = [];
   let masterLogin = false;
   let rawArsivData = [];
+  let selectedFile = null;
 
-  // Veritabanına kaydedilmeden önce her string değeri büyük harfe çeviren yardımcı fonksiyon
   const toUpper = (val) => val ? val.toString().toLocaleUpperCase('tr-TR') : "";
+  const currentUserSicil = () => masterLogin ? "MASTER" : (auth.currentUser ? auth.currentUser.email.split("@")[0] : "Anonim");
 
   function startApp(role) {
     document.getElementById("authPage").style.display = "none";
     document.getElementById("mainApp").style.display = "flex";
     if (role === "admin") { document.getElementById("adminTab").style.display = "block"; loadAdminUserList(); }
     onSnapshot(collection(db, "Ürünler"), (sn) => { allProducts = sn.docs.map(d => d.data().name.toUpperCase()); });
-    listenRedData(); listenDefData(); listenArsivData(); listenLast20();
+    listenRedData(); listenDefData(); listenArsivData(); listenLast20(); listenChatMessages();
   }
 
   onAuthStateChanged(auth, async (user) => { 
@@ -219,6 +253,71 @@
     if (!sc || !sf) return alert("Bilgileri girin!");
     signInWithEmailAndPassword(auth, sc + "@skks.com", sf).catch(() => alert("Hatalı Giriş!"));
   };
+
+  // CHAT MODÜLÜ İŞLEMLERİ
+  document.getElementById("chatFile").onchange = (e) => {
+    selectedFile = e.target.files[0];
+    if(selectedFile) document.getElementById("fileNameDisplay").innerText = "Seçilen Görsel: " + selectedFile.name;
+  };
+
+  document.getElementById("btnSendChat").onclick = async () => {
+    const txt = document.getElementById("chatMessage").value.trim();
+    const btn = document.getElementById("btnSendChat");
+    if(!txt && !selectedFile) return alert("Lütfen bir mesaj yazın veya fotoğraf seçin!");
+
+    btn.disabled = true; btn.innerText = "Gönderiliyor...";
+    let imgUrl = "";
+
+    try {
+      if(selectedFile) {
+        const fileRef = ref(storage, `chat_images/${Date.now()}_${selectedFile.name}`);
+        await uploadBytes(fileRef, selectedFile);
+        imgUrl = await getDownloadURL(fileRef);
+      }
+
+      await addDoc(collection(db, "chat_messages"), {
+        sender: currentUserSicil(),
+        text: txt,
+        mediaUrl: imgUrl,
+        date: new Date()
+      });
+
+      document.getElementById("chatMessage").value = "";
+      document.getElementById("chatFile").value = "";
+      document.getElementById("fileNameDisplay").innerText = "";
+      selectedFile = null;
+    } catch(err) {
+      alert("Gönderim Hatası: " + err.message);
+    } finally {
+      btn.disabled = false; btn.innerText = "GÖNDER";
+    }
+  };
+
+  function listenChatMessages() {
+    const q = query(collection(db, "chat_messages"), orderBy("date", "asc"), limit(50));
+    onSnapshot(q, (snap) => {
+      const box = document.getElementById("chatBox");
+      box.innerHTML = "";
+      const mySicil = currentUserSicil();
+
+      snap.forEach(d => {
+        const m = d.data();
+        const isSelf = m.sender === mySicil;
+        const timeStr = m.date ? m.date.toDate().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'}) : "";
+        
+        let imgHTML = m.mediaUrl ? `<a href="${m.mediaUrl}" target="_blank"><img src="${m.mediaUrl}" class="chat-img" /></a>` : "";
+
+        box.innerHTML += `
+          <div class="chat-item ${isSelf ? 'self' : ''}">
+            <div class="chat-header"><span>👤 ${m.sender}</span><span>${timeStr}</span></div>
+            ${m.text ? `<div class="chat-body">${m.text}</div>` : ''}
+            ${imgHTML}
+          </div>
+        `;
+      });
+      box.scrollTop = box.scrollHeight;
+    });
+  }
 
   function listenLast20() {
     const q = query(collection(db, "records"), orderBy("date", "desc"), limit(20));
@@ -256,11 +355,10 @@
     if(!allProducts.includes(p)) await addDoc(collection(db, "Ürünler"), {name:p});
     
     await addDoc(collection(db, "records"), { 
-        p, 
-        rt, 
+        p, rt, 
         mrt: mrt || "", 
         mrts: mrts || "", 
-        u: (masterLogin ? "MASTER" : auth.currentUser.email.split("@")[0]), 
+        u: currentUserSicil(), 
         date: new Date() 
     });
     
