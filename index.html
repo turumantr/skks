@@ -15,7 +15,7 @@
     .logo-title { font-size: 13px; color: #7f8c8d; margin: 0; text-transform: uppercase; }
 
     .main-wrapper { width: 100%; max-width: 1200px; display: none; flex-direction: column; gap: 20px; }
-    .tabs { display: flex; gap: 5px; margin-bottom: -10px; z-index: 1; width: 100%; overflow-x: auto; padding-bottom: 5px; }
+    .tabs { display: flex; gap: 5px; margin-bottom: -10px; z-index: 1; width: 100%; overflow-x: auto; padding-bottom: 5px; align-items: center; }
     .tab-btn { padding: 12px 18px; background: #dcdde1; border: none; border-radius: 10px 10px 0 0; cursor: pointer; font-weight: bold; color: #7f8c8d; white-space: nowrap; font-size: 13px; transition: 0.3s; }
     .tab-btn.active { background: white; color: var(--p); box-shadow: 0 -5px 15px rgba(0,0,0,0.05); }
     
@@ -89,7 +89,11 @@
     <button class="tab-btn" style="background: var(--cer); color: white;" onclick="showPage('chatPage', this)">💬 İLETİŞİM</button>
     <button class="tab-btn" style="background: var(--ars); color: white;" onclick="showPage('arsivPage', this)">📂 ARŞİV</button>
     <button id="adminTab" class="tab-btn" style="display:none" onclick="showPage('personelPage', this)">👥 PERSONEL</button>
-    <button id="btnLogout" style="background:none; color:var(--d); margin-left:auto; border:none; cursor:pointer; font-weight:bold;">ÇIKIŞ</button>
+    
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 10px; padding-right: 5px;">
+      <span id="userInfo" style="font-size: 12px; font-weight: bold; color: var(--p);">👤 -</span>
+      <button id="btnLogout" style="background: var(--d); color: white; padding: 6px 12px; font-size: 12px; border-radius: 6px; cursor: pointer;">ÇIKIŞ</button>
+    </div>
   </div>
 
   <!-- ÜRETİM SAYFASI -->
@@ -239,7 +243,7 @@
   let masterLogin = false;
   let rawArsivData = [];
   let selectedFile = null;
-  let editingMessageId = null; // Düzenlenen mesaj ID'si
+  let editingMessageId = null; 
 
   const toUpper = (val) => val ? val.toString().toLocaleUpperCase('tr-TR') : "";
   const currentUserSicil = () => masterLogin ? "MASTER" : (auth.currentUser ? auth.currentUser.email.split("@")[0] : "Anonim");
@@ -247,7 +251,17 @@
   function startApp(role) {
     document.getElementById("authPage").style.display = "none";
     document.getElementById("mainApp").style.display = "flex";
-    if (role === "admin") { document.getElementById("adminTab").style.display = "block"; loadAdminUserList(); }
+    
+    // Giriş yapan kullanıcının adını/sicilini güncelle
+    document.getElementById("userInfo").innerText = "👤 " + currentUserSicil();
+
+    if (role === "admin") { 
+      document.getElementById("adminTab").style.display = "block"; 
+      loadAdminUserList(); 
+    } else {
+      document.getElementById("adminTab").style.display = "none";
+    }
+
     onSnapshot(collection(db, "Ürünler"), (sn) => { allProducts = sn.docs.map(d => d.data().name.toUpperCase()); });
     listenRedData(); listenDefData(); listenArsivData(); listenLast20(); listenChatMessages();
   }
@@ -282,7 +296,6 @@
 
     try {
       if (editingMessageId) {
-        // DÜZENLEME MODU (Sadece metin güncellenir)
         await updateDoc(doc(db, "chat_messages", editingMessageId), {
           text: txt,
           isEdited: true,
@@ -290,7 +303,6 @@
         });
         resetEditMode();
       } else {
-        // YENİ MESAJ MODU
         let imgUrl = "";
         if(selectedFile) {
           const fileRef = ref(storage, `chat_images/${Date.now()}_${selectedFile.name}`);
@@ -332,7 +344,6 @@
         const isSelf = m.sender === mySicil || masterLogin;
         const timeStr = m.date ? m.date.toDate().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'}) : "";
         
-        // SİLİNMİŞ MESAJ GÖRÜNÜMÜ (Soft Delete)
         if (m.isDeleted) {
           box.innerHTML += `
             <div class="chat-item ${isSelf ? 'self' : ''} deleted-msg">
@@ -346,12 +357,11 @@
         let imgHTML = m.mediaUrl ? `<a href="${m.mediaUrl}" target="_blank"><img src="${m.mediaUrl}" class="chat-img" /></a>` : "";
         let editedTag = m.isEdited ? `<span style="font-size:10px; color:#888; font-style:italic;"> (düzenlendi)</span>` : "";
 
-        // Aksiyon Butonları (Düzenle / Sil)
         let actionsHTML = "";
         if (isSelf) {
           actionsHTML = `
             <div class="chat-actions">
-              <button class="chat-action-btn" onclick="startEditMessage('${msgId}', \`${m.text.replace(/`/g, '\\`')}\`)">✏️ Düzenle</button>
+              <button class="chat-action-btn" onclick="startEditMessage('${msgId}', \`${m.text ? m.text.replace(/`/g, '\\`') : ''}\`)">✏️ Düzenle</button>
               <button class="chat-action-btn" onclick="softDeleteMessage('${msgId}')">🗑️ Sil</button>
             </div>
           `;
@@ -370,7 +380,6 @@
     });
   }
 
-  // Mesaj Düzenlemeyi Başlat
   window.startEditMessage = (id, text) => {
     editingMessageId = id;
     document.getElementById("chatMessage").value = text;
@@ -379,7 +388,6 @@
     document.getElementById("btnSendChat").innerText = "GÜNCELLE";
   };
 
-  // Düzenleme Modundan Çık
   document.getElementById("btnCancelEdit").onclick = resetEditMode;
 
   function resetEditMode() {
@@ -389,7 +397,6 @@
     document.getElementById("btnSendChat").innerText = "GÖNDER";
   }
 
-  // Mesajı Uygulamadan Sil (Soft Delete)
   window.softDeleteMessage = async (id) => {
     if (confirm("Bu mesajı silmek istediğinize emin misiniz? (Mesaj uygulamadan kaldırılır fakat veritabanında saklanır)")) {
       try {
@@ -421,7 +428,7 @@
       let maxMRT = 0; let maxMRTS = 0;
       snap.forEach(d => {
         const r = d.data();
-        tbody.innerHTML += `<tr><td>${r.rt}</td><td>${r.mrt || "-"}</td><td>${r.mrts || "-"}</td><td>${r.u || "-"}</td><td>${r.date.toDate().toLocaleString('tr-TR')}</td></tr>`;
+        tbody.innerHTML += `<tr><td>${r.rt}</td><td>${r.mrt || "-"}</td><td>${r.mrts || "-"}</td><td>${r.u || "-"}</td><td>${r.date ? r.date.toDate().toLocaleString('tr-TR') : ""}</td></tr>`;
         if(r.mrt && parseInt(r.mrt) > maxMRT) maxMRT = parseInt(r.mrt);
         if(r.mrts && parseInt(r.mrts) > maxMRTS) maxMRTS = parseInt(r.mrts);
       });
